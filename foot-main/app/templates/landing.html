@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}اختر المسابقة – LNFP{% endblock %}
+{% block body_class %}is-landing{% endblock %}
+
+{% block layout %}
+<header class="landing__bar">
+  <div class="topbar__brand">
+    <img class="topbar__logo" src="{{ url_for('static', filename='img/logo-lnfp.png') }}" alt="LNFP">
+    <div class="topbar__titles">
+      <strong>الرابطة الوطنية لكرة القدم المحترفة</strong>
+      <span>مولّد الأفيشات الرسمية</span>
+    </div>
+  </div>
+  <button type="button" class="icon-btn" data-theme-toggle aria-pressed="false" title="تبديل الوضع">
+    {% include "icons/theme.svg" %}
+  </button>
+</header>
+
+<main class="landing">
+  <div class="landing__intro">
+    <h1>{% if user %}اختر المسابقة{% else %}تسجيل الدخول{% endif %}</h1>
+    <p>
+      {% if user %}حدّد البطولة للانطلاق في إعداد أفيش الجولة — يمكنك تغييرها لاحقاً.
+      {% else %}هذا الفضاء مخصّص للمستعملين المرخّص لهم. الرجاء تسجيل الدخول للمتابعة.
+      {% endif %}
+    </p>
+  </div>
+
+  {% if user %}
+  <div class="league-grid">
+    {% for lg in leagues %}
+    {% if lg.code == 'ligue2' %}
+    {# Ligue 2 splits into two pools — choose which one to build. #}
+    <div class="league-card league-card--group">
+      <div class="league-card__lead">
+        <span class="league-card__badge">
+          <img src="{{ url_for('static', filename='img/' ~ lg.logo) }}" alt="{{ lg.name_ar }}">
+        </span>
+        <span class="league-card__body">
+          <strong>{{ lg.name_ar }}</strong>
+          <span>اختر المجموعة</span>
+        </span>
+      </div>
+      <div class="pool-choices">
+        {% for code, pool in pools.items() %}
+        <a class="pool-choice" href="{{ url_for('views.studio', competition='ligue2', pool=code) }}">
+          <span>{{ pool.label }}</span>
+          <span class="pool-choice__go" aria-hidden="true">{% include "icons/arrow.svg" %}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <a class="league-card" href="{{ url_for('views.studio', competition=lg.code) }}">
+      <span class="league-card__badge">
+        <img src="{{ url_for('static', filename='img/' ~ lg.logo) }}" alt="{{ lg.name_ar }}">
+      </span>
+      <span class="league-card__body">
+        <strong>{{ lg.name_ar }}</strong>
+        <span>إعداد أفيش الجولة</span>
+      </span>
+      <span class="league-card__go" aria-hidden="true">{% include "icons/arrow.svg" %}</span>
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <section class="signin" aria-label="تسجيل الدخول">
+    {% if user %}
+    <div class="signin__who">
+      <span>مُسجَّل الدخول: <strong dir="ltr">{{ user.username }}</strong></span>
+      {% if user.role == 'super' %}
+      <a class="btn btn--ghost" href="{{ url_for('admin.panel') }}">لوحة المدراء</a>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin.logout') }}">
+        <button type="submit" class="btn btn--ghost">خروج</button>
+      </form>
+    </div>
+    {% else %}
+    <form class="signin__panel" id="signinPanel" method="post"
+          action="{{ url_for('admin.login') }}">
+      {% if error %}<p class="signin__error">{{ error }}</p>{% endif %}
+      <label class="signin__field" for="signinUser">
+        <span class="signin__label">الاسم</span>
+        <input type="text" id="signinUser" name="username"
+               autocomplete="username" required>
+      </label>
+      <div class="signin__field">
+        <label class="signin__label" for="signinPass">كلمة السر</label>
+        <div class="pass-input">
+          <input type="password" id="signinPass" name="password"
+                 autocomplete="current-password" required>
+          <button type="button" class="icon-btn icon-btn--inset" id="revealPass"
+                  aria-pressed="false" aria-controls="signinPass"
+                  aria-label="إظهار كلمة السر" title="إظهار كلمة السر">
+            {% include "icons/eye.svg" %}
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn--primary signin__submit">دخول</button>
+    </form>
+    {% endif %}
+  </section>
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById("revealPass");
+    var input = document.getElementById("signinPass");
+    if (!btn || !input) return;
+    btn.addEventListener("click", function () {
+      var show = input.type === "password";
+      input.type = show ? "text" : "password";
+      btn.classList.toggle("is-revealed", show);
+      btn.setAttribute("aria-pressed", String(show));
+      var label = show ? "إخفاء كلمة السر" : "إظهار كلمة السر";
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("title", label);
+      // Keep the caret where the user left it.
+      var end = input.value.length;
+      input.focus();
+      try { input.setSelectionRange(end, end); } catch (e) { /* not supported */ }
+    });
+  })();
+</script>
+{% endblock %}

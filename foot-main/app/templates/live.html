@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}النتائج المباشرة – LNFP{% endblock %}
+{% block body_class %}has-sidebar{% endblock %}
+
+{% block layout %}
+<header class="topbar">
+  <div class="topbar__brand">
+    <button type="button" class="icon-btn topbar__burger" id="menuToggle"
+            aria-label="القائمة" aria-expanded="false" aria-controls="sidebar">
+      {% include "icons/menu.svg" %}
+    </button>
+    <img class="topbar__logo"
+         src="{{ url_for('static', filename='img/logo-ligue1.png') }}" alt="">
+    <div class="topbar__titles">
+      <strong>النتائج المباشرة</strong>
+      <span>بطولة الرابطة المحترفة 1</span>
+    </div>
+  </div>
+  <div class="topbar__tools">
+    <span class="db-status" id="liveState" data-state="checking">
+      <span class="db-dot" aria-hidden="true"></span>
+      <span class="db-status__text">جارٍ التحديث…</span>
+    </span>
+    <button type="button" class="icon-btn" data-theme-toggle aria-pressed="false" title="تبديل الوضع">
+      {% include "icons/theme.svg" %}
+    </button>
+    {% if user %}
+    <span class="topbar__who" dir="ltr" title="مُسجَّل الدخول">{{ user.username }}</span>
+    <form method="post" action="{{ url_for('admin.logout') }}">
+      <button type="submit" class="icon-btn" title="خروج">{% include "icons/lock.svg" %}</button>
+    </form>
+    {% endif %}
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="القائمة الجانبية">
+    <div class="sidebar__head">
+      <span>القائمة</span>
+      <button type="button" class="icon-btn sidebar__close" id="menuClose" aria-label="إغلاق">
+        {% include "icons/close.svg" %}
+      </button>
+    </div>
+    <nav class="sidebar__nav">
+      <a class="sidebar__link" href="{{ url_for('views.landing') }}">
+        {% include "icons/home.svg" %}<span>اختيار المسابقة</span>
+      </a>
+      <a class="sidebar__link" href="{{ url_for('views.studio') }}">
+        {% include "icons/trophy.svg" %}<span>محرّر الأفيش</span>
+      </a>
+      <a class="sidebar__link" href="{{ url_for('views.ranking', league='ligue1') }}">
+        {% include "icons/trophy.svg" %}<span>الترتيب</span>
+      </a>
+      {% if user and user.role == 'super' %}
+      <a class="sidebar__link" href="{{ url_for('admin.panel') }}">
+        {% include "icons/users.svg" %}<span>لوحة المدراء</span>
+      </a>
+      {% endif %}
+    </nav>
+    <div class="sidebar__foot">
+      <button type="button" class="sidebar__link" data-theme-toggle aria-pressed="false">
+        {% include "icons/theme.svg" %}<span>الوضع <span data-theme-label>نهاري</span></span>
+      </button>
+    </div>
+  </aside>
+  <div class="sidebar__scrim" id="sidebarScrim" hidden></div>
+
+  <main class="layout">
+    <section class="editor" aria-label="النتائج المباشرة">
+      <div class="panel">
+        <div class="panel__head">
+          <h2>النتائج المباشرة — الرابطة 1</h2>
+          <p>اضغط «تحديث» لجلب النتائج (لا تحديث تلقائي حرصاً على رصيد الطلبات). المصدر: API-Football.</p>
+        </div>
+        <div class="rank-toolbar">
+          <button type="button" class="btn btn--primary" id="refreshBtn">
+            {% include "icons/trophy.svg" %}<span>تحديث النتائج</span>
+          </button>
+          <span class="live-meta" id="liveMeta"></span>
+        </div>
+        <div class="live-board" id="liveBoard">
+          <p class="saved-empty" id="liveEmpty">اضغط «تحديث النتائج» للجلب.</p>
+        </div>
+        <p class="hint" id="liveHint"></p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<template id="liveMatchTpl">
+  <article class="live-match">
+    <div class="live-match__side live-match__side--home">
+      <span class="live-match__logo"></span>
+      <span class="live-match__name" dir="auto"></span>
+    </div>
+    <div class="live-match__center">
+      <span class="live-match__score">–</span>
+      <span class="live-match__status"></span>
+    </div>
+    <div class="live-match__side live-match__side--away">
+      <span class="live-match__logo"></span>
+      <span class="live-match__name" dir="auto"></span>
+    </div>
+  </article>
+</template>
+
+<script id="teamsData" type="application/json">{{ teams | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/live.js') }}"></script>
+{% endblock %}

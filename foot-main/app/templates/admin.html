@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}لوحة تحكّم المدراء – LNFP{% endblock %}
+
+{% block layout %}
+<header class="topbar">
+  <div class="topbar__brand">
+    <img class="topbar__logo" src="{{ url_for('static', filename='img/logo-lnfp.png') }}" alt="LNFP">
+    <div class="topbar__titles">
+      <strong>حسابات المدراء</strong>
+      <span>مُسجَّل الدخول: <span dir="ltr">{{ super_user }}</span></span>
+    </div>
+  </div>
+  <div class="topbar__tools">
+    <button type="button" class="icon-btn" data-theme-toggle aria-pressed="false" title="تبديل الوضع">
+      {% include "icons/theme.svg" %}
+    </button>
+    <a class="btn btn--ghost" href="{{ url_for('views.landing') }}">العودة للتطبيق</a>
+    <form method="post" action="{{ url_for('admin.logout') }}">
+      <button type="submit" class="btn btn--ghost">خروج</button>
+    </form>
+  </div>
+</header>
+
+<main class="layout admin">
+  <!-- Database connection state -->
+  <div class="db-banner" id="dbBanner" data-state="checking"
+       role="status" aria-live="polite">
+    <span class="db-dot" aria-hidden="true"></span>
+    <span class="db-banner__text">جارٍ التحقّق من قاعدة البيانات…</span>
+  </div>
+
+  <!-- Floating stat cards -->
+  <section class="stats" aria-label="إحصائيات الحسابات">
+    <article class="stat">
+      <span class="stat__icon stat__icon--blue">{% include "icons/users.svg" %}</span>
+      <span class="stat__body"><strong id="statTotal">0</strong><span>الحسابات</span></span>
+    </article>
+    <article class="stat">
+      <span class="stat__icon stat__icon--green">{% include "icons/shield.svg" %}</span>
+      <span class="stat__body"><strong id="statActive" class="is-green">0</strong><span>نشِطة</span></span>
+    </article>
+    <article class="stat">
+      <span class="stat__icon stat__icon--amber">{% include "icons/clock.svg" %}</span>
+      <span class="stat__body"><strong id="statSuspended" class="is-amber">0</strong><span>موقوفة</span></span>
+    </article>
+  </section>
+
+  <div class="admin__grid">
+    <!-- Create / reset -->
+    <section class="panel">
+      <div class="panel__head panel__head--icon">
+        <span class="stat__icon stat__icon--blue">{% include "icons/user-plus.svg" %}</span>
+        <h2>مدير جديد</h2>
+      </div>
+
+      <div class="field">
+        <label for="adminUser">الاسم</label>
+        <input type="text" id="adminUser" placeholder="مثال: mehdi" autocomplete="off" dir="ltr">
+      </div>
+
+      <div class="field">
+        <label for="adminPass">كلمة السر (تُعاد ضبطها إن كان الحساب موجوداً)</label>
+        <div class="pass-row">
+          <div class="pass-input">
+            <input type="text" id="adminPass" placeholder="••••••••" autocomplete="new-password" dir="ltr">
+            <button type="button" class="icon-btn icon-btn--inset" id="copyPass"
+                    title="نسخ كلمة السر" aria-label="نسخ كلمة السر">
+              {% include "icons/copy.svg" %}
+            </button>
+          </div>
+          <button type="button" class="btn btn--ghost" id="genPass">
+            {% include "icons/key.svg" %}<span>توليد</span>
+          </button>
+        </div>
+        <p class="field__help">تُخزَّن كلمة السر مشفّرة — انسخها الآن، لن تُعرض مرة أخرى.</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn--primary" id="saveAdmin">حفظ الحساب</button>
+      </div>
+      <p class="hint" id="adminHint"></p>
+    </section>
+
+    <!-- Existing accounts -->
+    <section class="panel">
+      <div class="panel__head"><h2>الحسابات الحالية</h2></div>
+      <ul class="admin-list" id="adminList">
+        <li class="saved-empty">جارٍ التحميل…</li>
+      </ul>
+    </section>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

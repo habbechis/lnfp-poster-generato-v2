@@ -1,0 +1,130 @@
+{
+  "teams": [
+    {
+      "code": "l2p2_jsk",
+      "name_ar": "الشبيبة الرياضية القيروانية",
+      "name_fr": "Jeunesse Sportive Kairouanaise",
+      "short": "JSK",
+      "logo": "l2p2_jsk.png",
+      "stadium_ar": "ملعب حمدة العواني بالقيروان",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_sg",
+      "name_ar": "الملعب القابسي",
+      "name_fr": "Stade Gabésien",
+      "short": "SG",
+      "logo": "l2p2_sg.png",
+      "stadium_ar": "ملعب عمر دغمان بقابس",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_ask",
+      "name_ar": "المستقبل الرياضي بالقصرين",
+      "name_fr": "Avenir Sportif de Kasserine",
+      "short": "ASK",
+      "logo": "l2p2_ask.png",
+      "stadium_ar": "الملعب البلدي بالقصرين",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_js",
+      "name_ar": "جندوبة الرياضية",
+      "name_fr": "Jendouba Sport",
+      "short": "JS",
+      "logo": "l2p2_js.png",
+      "stadium_ar": "الملعب البلدي بجندوبة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_csk",
+      "name_ar": "النادي الرياضي القربي",
+      "name_fr": "Club Sportif de Korba",
+      "short": "CSK",
+      "logo": "l2p2_csk.png",
+      "stadium_ar": "الملعب البلدي بقربة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_esb",
+      "name_ar": "الأمل الرياضي ببوشمة",
+      "name_fr": "Étoile Sportive de Bouchemma",
+      "short": "ESB",
+      "logo": "l2p2_esb.png",
+      "stadium_ar": "الملعب البلدي ببوشمة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_egsg",
+      "name_ar": "القوافل الرياضية بقفصة",
+      "name_fr": "El Gawafel Sportives de Gafsa",
+      "short": "EGSG",
+      "logo": "l2p2_egsg.png",
+      "stadium_ar": "الملعب الأولمبي بقفصة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_asar",
+      "name_ar": "الجمعية الرياضية بأريانة",
+      "name_fr": "Association Sportive de l'Ariana",
+      "short": "ASA",
+      "logo": "l2p2_asar.png",
+      "stadium_ar": "الملعب البلدي بأريانة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_uske",
+      "name_ar": "الاتحاد الرياضي بقصور الساف",
+      "name_fr": "Union Sportive de Ksour Essef",
+      "short": "USKE",
+      "logo": "l2p2_uske.png",
+      "stadium_ar": "الملعب البلدي بقصور الساف",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_csr",
+      "name_ar": "الهلال الرياضي بالرديف",
+      "name_fr": "Croissant Sportif de Redeyef",
+      "short": "CSR",
+      "logo": "l2p2_csr.png",
+      "stadium_ar": "الملعب البلدي بالرديف",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_ks",
+      "name_ar": "القلعة الرياضية",
+      "name_fr": "Kalâa Sport",
+      "short": "KS",
+      "logo": "l2p2_ks.png",
+      "stadium_ar": "الملعب البلدي بالقلعة الصغرى",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_scm",
+      "name_ar": "سبورتينغ المكنين",
+      "name_fr": "Sporting Club de Moknine",
+      "short": "SCM",
+      "logo": "l2p2_scm.png",
+      "stadium_ar": "الملعب البلدي بالمكنين",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_ok",
+      "name_ar": "أولمبيك الكاف",
+      "name_fr": "Olympique du Kef",
+      "short": "OK",
+      "logo": "l2p2_ok.png",
+      "stadium_ar": "ملعب بن عيسى الكاف",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p2_com",
+      "name_ar": "أولمبيك مدنين",
+      "name_fr": "Club Olympique de Médenine",
+      "short": "COM",
+      "logo": "l2p2_com.png",
+      "stadium_ar": "الملعب الأولمبي بمدنين",
+      "city_ar": ""
+    }
+  ]
+}

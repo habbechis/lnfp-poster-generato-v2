@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}مولّد أفيشات الرابطة المحترفة – LNFP{% endblock %}</title>
+  <meta name="description" content="مولّد أفيشات مباريات الرابطة الوطنية لكرة القدم المحترفة – توليد وتحميل الأفيش تلقائياً.">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  {# Apply the saved theme and language/direction before first paint so the
+     page never flashes. Arabic is RTL (default); French flips to LTR. #}
+  <script>
+    (function () {
+      var root = document.documentElement;
+      try {
+        // Dark is the brand default; only an explicit choice changes it.
+        root.setAttribute("data-theme", localStorage.getItem("lnfp-theme") || "dark");
+      } catch (e) {
+        root.setAttribute("data-theme", "dark");
+      }
+      try {
+        if ((localStorage.getItem("lnfp-lang") || "ar") === "fr") {
+          root.setAttribute("lang", "fr");
+          root.setAttribute("dir", "ltr");
+        }
+      } catch (e) { /* keep Arabic RTL */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <!-- Ambient 3D backdrop (Three.js, self-hosted). Decorative only. -->
+  <canvas id="bg3d" class="bg3d" aria-hidden="true"></canvas>
+
+  {% block layout %}{% endblock %}
+
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/db-status.js') }}"></script>
+  {% block scripts %}{% endblock %}
+  <script type="module" src="{{ url_for('static', filename='js/scene3d.js') }}"></script>
+</body>
+</html>

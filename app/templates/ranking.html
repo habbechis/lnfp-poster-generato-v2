@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}الترتيب – LNFP{% endblock %}
+{% block body_class %}has-sidebar{% endblock %}
+
+{% block layout %}
+<header class="topbar">
+  <div class="topbar__brand">
+    <button type="button" class="icon-btn topbar__burger" id="menuToggle"
+            aria-label="القائمة" aria-expanded="false" aria-controls="sidebar">
+      {% include "icons/menu.svg" %}
+    </button>
+    <img class="topbar__logo" id="siteLogo"
+         src="{{ url_for('static', filename='img/' ~ rank_ctx.brand) }}" alt="">
+    <div class="topbar__titles">
+      <strong>ترتيب البطولة</strong>
+      <span>{{ current.subtitle }}</span>
+    </div>
+  </div>
+  <div class="topbar__tools">
+    <button type="button" class="icon-btn" data-theme-toggle aria-pressed="false" title="تبديل الوضع">
+      {% include "icons/theme.svg" %}
+    </button>
+    {% if user %}
+    <span class="topbar__who" dir="ltr" title="مُسجَّل الدخول">{{ user.username }}</span>
+    <form method="post" action="{{ url_for('admin.logout') }}">
+      <button type="submit" class="icon-btn" title="خروج">{% include "icons/lock.svg" %}</button>
+    </form>
+    {% endif %}
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="القائمة الجانبية">
+    <div class="sidebar__head">
+      <span>القائمة</span>
+      <button type="button" class="icon-btn sidebar__close" id="menuClose" aria-label="إغلاق">
+        {% include "icons/close.svg" %}
+      </button>
+    </div>
+
+    <nav class="sidebar__nav">
+      <a class="sidebar__link" href="{{ url_for('views.landing') }}">
+        {% include "icons/home.svg" %}<span>اختيار المسابقة</span>
+      </a>
+      <a class="sidebar__link" href="{{ url_for('views.studio') }}">
+        {% include "icons/trophy.svg" %}<span>محرّر الأفيش</span>
+      </a>
+      <a class="sidebar__link" href="{{ url_for('views.live') }}">
+        {% include "icons/trophy.svg" %}<span>النتائج المباشرة</span>
+      </a>
+      {% if user and user.role == 'super' %}
+      <a class="sidebar__link" href="{{ url_for('admin.panel') }}">
+        {% include "icons/users.svg" %}<span>لوحة المدراء</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar__section">
+      <span class="sidebar__label">{% include "icons/trophy.svg" %} الترتيب</span>
+      <div class="sidebar__comps">
+        {% for r in rankings %}
+        <a class="comp-chip{% if r.league == current.league %} is-active{% endif %}"
+           href="{{ url_for('views.ranking', league=r.league) }}">{{ r.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sidebar__foot">
+      <button type="button" class="sidebar__link" data-theme-toggle aria-pressed="false">
+        {% include "icons/theme.svg" %}<span>الوضع <span data-theme-label>نهاري</span></span>
+      </button>
+    </div>
+  </aside>
+  <div class="sidebar__scrim" id="sidebarScrim" hidden></div>
+
+  <main class="layout">
+    <section class="editor" aria-label="محرّر الترتيب">
+      <div class="panel">
+        <div class="panel__head">
+          <h2><span>الترتيب</span> — <span>{{ current.label }}</span></h2>
+          <p>اسحب الصفوف لإعادة الترتيب، وعدّل النقاط، ثم احفظ أو حمّل الأفيش.</p>
+        </div>
+
+        <div class="rank-toolbar">
+          <label class="rank-field">
+            <span>لعب — تعبئة الكل</span>
+            <input type="text" id="playedInput" inputmode="numeric" maxlength="2"
+                   placeholder="—" aria-label="تعبئة عدد المباريات للجميع">
+          </label>
+          <button type="button" class="btn btn--ghost" id="sortBtn">
+            {% include "icons/trophy.svg" %}<span>رتّب حسب النقاط</span>
+          </button>
+          {% if current.league == 'ligue1' %}
+          <button type="button" class="btn btn--ghost" id="fetchApiBtn"
+                  title="جلب النقاط من API-Football">
+            {% include "icons/trophy.svg" %}<span>جلب من API</span>
+          </button>
+          {% endif %}
+          <button type="button" class="btn btn--ghost" id="resetBtn">استعادة</button>
+        </div>
+
+        <div class="field">
+          <div class="field__labelrow">
+            <label for="bulletinText">لصق الترتيب (نص)</label>
+            <button type="button" class="btn btn--ghost" id="parseBulletinBtn">
+              {% include "icons/trophy.svg" %}<span>استخراج وتعبئة</span>
+            </button>
+          </div>
+          <textarea id="bulletinText" class="bulletin" rows="4" dir="ltr"
+                    placeholder="CLASSEMENT&#10;CA 66&#10;EST 63&#10;CSS 62"></textarea>
+          <p class="field__help">الصق قائمة «CLASSEMENT» — تُملأ النقاط ويُرتَّب الجدول تلقائياً حسب الرموز.</p>
+        </div>
+
+        <ol id="rankList" class="rank-list" aria-label="جدول الترتيب"></ol>
+
+        <div class="actions">
+          <button type="button" class="btn btn--primary" id="downloadBtn">
+            {% include "icons/download.svg" %}<span>تحميل الصفحة الحالية</span>
+          </button>
+          <button type="button" class="btn btn--primary" id="downloadAllBtn">
+            {% include "icons/download.svg" %}<span>تحميل الصفحتين (ZIP)</span>
+          </button>
+          <button type="button" class="btn btn--gold" id="saveBtn">
+            {% include "icons/save.svg" %}<span>حفظ</span>
+          </button>
+        </div>
+        <p class="hint" id="hint"></p>
+      </div>
+
+      <aside class="preview">
+        <div class="preview__head">
+          <h2>معاينة مباشرة</h2>
+          <div class="title-mode rank-pages" role="radiogroup" aria-label="الصفحة">
+            <label class="seg"><input type="radio" name="rankPage" value="1" checked><span>صفحة 1</span></label>
+            <label class="seg"><input type="radio" name="rankPage" value="2"><span>صفحة 2</span></label>
+          </div>
+          <span class="badge" id="previewBadge">جاهز</span>
+        </div>
+        <p class="field__help">يُصدَّر الترتيب في صفحتين (كل صفحة نصف الفرق) ليبقى واضحاً — حمّل كل صفحة على حدة.</p>
+        <div class="preview__stage" id="previewStage">
+          <img id="previewImg" alt="معاينة الترتيب" hidden />
+          <p class="preview__empty" id="previewEmpty">جارٍ التحميل…</p>
+          <div class="preview__spinner" id="previewSpinner" hidden><span></span></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<!-- Row template -->
+<template id="rankRowTpl">
+  <li class="rank-row">
+    <span class="rank-row__move">
+      <button type="button" class="rank-move" data-move="up" aria-label="تحريك لأعلى">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <button type="button" class="rank-move" data-move="down" aria-label="تحريك لأسفل">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </span>
+    <span class="rank-row__pos"></span>
+    <span class="rank-row__logo"></span>
+    <span class="rank-row__name" dir="auto"></span>
+    <label class="rank-row__num"><span>لعب</span>
+      <input class="rank-row__played" type="text" inputmode="numeric" maxlength="2"
+             placeholder="0" aria-label="عدد المباريات"></label>
+    <label class="rank-row__num"><span>نقاط</span>
+      <input class="rank-row__pts" type="text" inputmode="numeric" maxlength="3"
+             placeholder="0" aria-label="النقاط"></label>
+  </li>
+</template>
+
+<script id="teamsData" type="application/json">{{ teams | tojson }}</script>
+<script id="rankCtx" type="application/json">{{ rank_ctx | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ranking.js') }}"></script>
+{% endblock %}

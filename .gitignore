@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+*.env
+serviceAccount*.json
+firebase*.json
+!app/data/*.json
+
+# Local fallback database (runtime data, not source). The admin file holds
+# password hashes and must never be committed.
+data/matchdays.json
+data/*-admins.json
+data/matchdays*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Runtime output
+*.log

@@ -1,0 +1,130 @@
+{
+  "teams": [
+    {
+      "code": "l2p1_ass",
+      "name_ar": "المستقبل الرياضي بسليمان",
+      "name_fr": "Avenir Sportif de Soliman",
+      "short": "ASS",
+      "logo": "l2p1_ass.png",
+      "stadium_ar": "ملعب سليمان البلدي",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_asg",
+      "name_ar": "المستقبل الرياضي بقابس",
+      "name_fr": "Avenir Sportif de Gabès",
+      "short": "ASG",
+      "logo": "l2p1_asg.png",
+      "stadium_ar": "ملعب قابس المعشب (عمر دغمان)",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_ust",
+      "name_ar": "الاتحاد الرياضي بتطاوين",
+      "name_fr": "Union Sportive de Tataouine",
+      "short": "UST",
+      "logo": "l2p1_ust.png",
+      "stadium_ar": "ملعب نجيب الخطاب بتطاوين",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_srs",
+      "name_ar": "سكك الحديد الصفاقسي",
+      "name_fr": "Sfax Railway Sport",
+      "short": "SRS",
+      "logo": "l2p1_srs.png",
+      "stadium_ar": "ملعب 2 مارس بصفاقس / ملعب عامر Gargouri",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_scba",
+      "name_ar": "سبورتينغ بن عروس",
+      "name_fr": "Sporting Club de Ben Arous",
+      "short": "SCBA",
+      "logo": "l2p1_scba.png",
+      "stadium_ar": "الملعب البلدي ببن عروس",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_ock",
+      "name_ar": "نادي المحيط القرقني",
+      "name_fr": "Océano Club de Kerkennah",
+      "short": "OCK",
+      "logo": "l2p1_ock.png",
+      "stadium_ar": "ملعب 2 مارس بصفاقس / ملعب قرقنة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_csc",
+      "name_ar": "الهلال الرياضي بالشابة",
+      "name_fr": "Croissant Sportif Chebbien",
+      "short": "CSC",
+      "logo": "l2p1_csc.png",
+      "stadium_ar": "الملعب البلدي بالشابة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_csm",
+      "name_ar": "الهلال الرياضي بمساكن",
+      "name_fr": "Croissant Sportif de M'saken",
+      "short": "CSM",
+      "logo": "l2p1_csm.png",
+      "stadium_ar": "الملعب البلدي بمساكن",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_bsbh",
+      "name_ar": "البعث الرياضي ببوحجلة",
+      "name_fr": "Baath Sportif de Bou Hajla",
+      "short": "BSBH",
+      "logo": "l2p1_bsbh.png",
+      "stadium_ar": "الملعب البلدي ببوحجلة",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_ams",
+      "name_ar": "جمعية مقرين الرياضية",
+      "name_fr": "Association Mégrine Sport",
+      "short": "AMS",
+      "logo": "l2p1_ams.png",
+      "stadium_ar": "الملعب البلدي بمقرين",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_emm",
+      "name_ar": "مكارم المهدية",
+      "name_fr": "El Makarem de Mahdia",
+      "short": "EMM",
+      "logo": "l2p1_emm.png",
+      "stadium_ar": "ملعب أحمد خوجة بالمهدية",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_asa",
+      "name_ar": "الكوكب الرياضي بعقارب",
+      "name_fr": "Astre Sportif d'Agareb",
+      "short": "ASA",
+      "logo": "l2p1_asa.png",
+      "stadium_ar": "الملعب البلدي بعقارب",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_esbk",
+      "name_ar": "النجم الرياضي الخلادي",
+      "name_fr": "Étoile Sportive de Béni Khalled",
+      "short": "ESBK",
+      "logo": "l2p1_esbk.png",
+      "stadium_ar": "ملعب بني خلاد البلدي",
+      "city_ar": ""
+    },
+    {
+      "code": "l2p1_ss",
+      "name_ar": "الملعب السوسي",
+      "name_fr": "Stade Soussien",
+      "short": "SS",
+      "logo": "l2p1_ss.png",
+      "stadium_ar": "الملعب البلدي بسوسة (بوعلي الحوار)",
+      "city_ar": ""
+    }
+  ]
+}

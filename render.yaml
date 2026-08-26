@@ -1,0 +1,22 @@
+# Render blueprint — deploy with one click via render.com "New + Blueprint".
+services:
+  - type: web
+    name: lnfp-poster
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT"
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DB_BACKEND
+        value: auto
+      # To enable Firebase, paste the service-account JSON as a secret:
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false
+      - key: FIRESTORE_COLLECTION
+        value: matchdays

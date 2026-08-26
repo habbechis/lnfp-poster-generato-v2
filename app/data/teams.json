@@ -1,0 +1,20 @@
+{
+  "teams": [
+    { "code": "est", "name_ar": "الترجي الرياضي التونسي", "name_fr": "Espérance Sportive de Tunis", "short": "EST", "logo": "est.png", "stadium_ar": "الملعب الأولمبي حمادي العقربي برادس", "city_ar": "تونس" },
+    { "code": "ca", "name_ar": "النادي الأفريقي", "name_fr": "Club Africain", "short": "CA", "logo": "ca.png", "stadium_ar": "الملعب الأولمبي حمادي العقربي برادس", "city_ar": "تونس" },
+    { "code": "css", "name_ar": "النادي الرياضي الصفاقسي", "name_fr": "Club Sportif Sfaxien", "short": "CSS", "logo": "css.png", "stadium_ar": "ملعب الطيب المهيري بصفاقس", "city_ar": "صفاقس" },
+    { "code": "ess", "name_ar": "النجم الرياضي الساحلي", "name_fr": "Étoile Sportive du Sahel", "short": "ESS", "logo": "ess.png", "stadium_ar": "الملعب الأولمبي بوسط سوسة", "city_ar": "سوسة" },
+    { "code": "st", "name_ar": "الملعب التونسي", "name_fr": "Stade Tunisien", "short": "ST", "logo": "st.png", "stadium_ar": "ملعب الهادي النيفر باردو", "city_ar": "أريانة" },
+    { "code": "cab", "name_ar": "النادي الرياضي البنزرتي", "name_fr": "Club Athlétique Bizertin", "short": "CAB", "logo": "cab.png", "stadium_ar": "ملعب 15 أكتوبر ببنزرت", "city_ar": "بنزرت" },
+    { "code": "usm", "name_ar": "الاتحاد الرياضي المنستيري", "name_fr": "Union Sportive Monastirienne", "short": "USM", "logo": "usm.png", "stadium_ar": "ملعب مصطفى بن جنات بالمنستير", "city_ar": "المنستير" },
+    { "code": "usbg", "name_ar": "الاتحاد الرياضي ببن قردان", "name_fr": "Union Sportive de Ben Guerdane", "short": "USBG", "logo": "usbg.png", "stadium_ar": "ملعب 7 مارس ببن قردان", "city_ar": "بن قردان" },
+    { "code": "esz", "name_ar": "الترجي الرياضي الجرجيسي", "name_fr": "Espérance Sportive de Zarzis", "short": "ESZ", "logo": "esz.png", "stadium_ar": "المركب الرياضي بجرجيس", "city_ar": "جرجيس" },
+    { "code": "esm", "name_ar": "النجم الرياضي بالمتلوي", "name_fr": "Étoile Sportive de Métlaoui", "short": "ESM", "logo": "esm.png", "stadium_ar": "الملعب البلدي بالمتلوي", "city_ar": "المتلوي" },
+    { "code": "asm", "name_ar": "المستقبل الرياضي بالمرسى", "name_fr": "Avenir Sportif de La Marsa", "short": "ASM", "logo": "asm.png", "stadium_ar": "ملعب عبد العزيز الشتيوي بالمرسى", "city_ar": "المرسى" },
+    { "code": "ob", "name_ar": "الأولمبي الباجي", "name_fr": "Olympique de Béja", "short": "OB", "logo": "ob.png", "stadium_ar": "ملعب بوجمعة الكميتي بباجة", "city_ar": "باجة" },
+    { "code": "cshl", "name_ar": "النادي الرياضي لحمام الأنف", "name_fr": "Club Sportif de Hammam-Lif", "short": "CSHL", "logo": "cshl.png", "stadium_ar": "الملعب البلدي بحمام الأنف", "city_ar": "حمام الأنف" },
+    { "code": "eshs", "name_ar": "الأمل الرياضي بحمام سوسة", "name_fr": "Espoir Sportif de Hammam Sousse", "short": "ESHS", "logo": "eshs.png", "stadium_ar": "ملعب بوعلي الحوار بحمام سوسة", "city_ar": "حمام سوسة" },
+    { "code": "jso", "name_ar": "الشبيبة الرياضية العمرانية", "name_fr": "Jeunesse Sportive d'El Omrane", "short": "JSO", "logo": "jso.png", "stadium_ar": "ملعب الشاذلي زويتن بتونس", "city_ar": "العمران" },
+    { "code": "pss", "name_ar": "التقدم الرياضي بساقية الداير", "name_fr": "Progrès Sportif de Sakiet Eddaïer", "short": "PSS", "logo": "pss.png", "stadium_ar": "ملعب الطيب المهيري بصفاقس", "city_ar": "صفاقس" }
+  ]
+}

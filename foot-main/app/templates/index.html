@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block body_class %}has-sidebar{% endblock %}
+
+{% block layout %}
+<header class="topbar">
+  <div class="topbar__brand">
+    <button type="button" class="icon-btn topbar__burger" id="menuToggle"
+            aria-label="القائمة" aria-expanded="false" aria-controls="sidebar">
+      {% include "icons/menu.svg" %}
+    </button>
+    <span class="topbar__mark" id="topbarMark" aria-hidden="true"></span>
+    <img class="topbar__logo" id="siteLogo"
+         src="{{ url_for('static', filename='img/logo-ligue1.png') }}" alt="">
+    <div class="topbar__titles">
+      <strong>مولّد الأفيشات الرسمية</strong>
+      <span>{% if render_ctx and render_ctx.pool_label %}بطولة الرابطة 2 — {{ render_ctx.pool_label }}{% else %}الرابطة الوطنية لكرة القدم المحترفة{% endif %}</span>
+    </div>
+  </div>
+  <div class="topbar__tools">
+    <button type="button" class="icon-btn" data-theme-toggle aria-pressed="false" title="تبديل الوضع">
+      {% include "icons/theme.svg" %}
+    </button>
+    {% if user %}
+    <span class="topbar__who" dir="ltr" title="مُسجَّل الدخول">{{ user.username }}</span>
+    <form method="post" action="{{ url_for('admin.logout') }}">
+      <button type="submit" class="icon-btn" title="خروج">{% include "icons/lock.svg" %}</button>
+    </form>
+    {% endif %}
+    <div class="topbar__status" id="storeStatus" title="حالة قاعدة البيانات">
+      <span class="dot"></span><span class="label">…</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- Sidebar: permanent on desktop, a drawer behind the hamburger on mobile -->
+  <aside class="sidebar" id="sidebar" aria-label="القائمة الجانبية">
+    <div class="sidebar__head">
+      <span>القائمة</span>
+      <button type="button" class="icon-btn sidebar__close" id="menuClose" aria-label="إغلاق">
+        {% include "icons/close.svg" %}
+      </button>
+    </div>
+
+    <nav class="sidebar__nav">
+      <a class="sidebar__link" href="{{ url_for('views.landing') }}">
+        {% include "icons/home.svg" %}<span>اختيار المسابقة</span>
+      </a>
+      {% if user and user.role == 'super' %}
+      <a class="sidebar__link" href="{{ url_for('admin.panel') }}">
+        {% include "icons/users.svg" %}<span>لوحة المدراء</span>
+      </a>
+      {% endif %}
+      <a class="sidebar__link" href="{{ url_for('views.ranking', league=render_ctx.squad if render_ctx and render_ctx.squad else 'ligue1') }}">
+        {% include "icons/trophy.svg" %}<span>الترتيب</span>
+      </a>
+      <a class="sidebar__link" href="{{ url_for('views.live') }}">
+        {% include "icons/trophy.svg" %}<span>النتائج المباشرة</span>
+      </a>
+      <button type="button" class="sidebar__link" id="navSaved">
+        {% include "icons/folder.svg" %}<span>الأفيشات المحفوظة</span>
+      </button>
+      <button type="button" class="sidebar__link" id="navDownload">
+        {% include "icons/download.svg" %}<span>تحميل الأفيش</span>
+      </button>
+    </nav>
+
+    <div class="sidebar__section">
+      <span class="sidebar__label">{% include "icons/trophy.svg" %} المسابقات</span>
+      <div class="sidebar__comps" id="sidebarComps">
+        <a class="comp-chip{% if render_ctx.squad == 'ligue1' %} is-active{% endif %}"
+           href="{{ url_for('views.studio', competition='ligue1') }}">بطولة الرابطة المحترفة 1</a>
+        <a class="comp-chip{% if render_ctx.squad == 'l2-pool1' %} is-active{% endif %}"
+           href="{{ url_for('views.studio', competition='ligue2', pool='pool1') }}">الرابطة 2 — المجموعة 1</a>
+        <a class="comp-chip{% if render_ctx.squad == 'l2-pool2' %} is-active{% endif %}"
+           href="{{ url_for('views.studio', competition='ligue2', pool='pool2') }}">الرابطة 2 — المجموعة 2</a>
+      </div>
+    </div>
+
+    <div class="sidebar__foot">
+      <div class="db-status" id="dbStatus" data-state="checking"
+           title="حالة قاعدة البيانات">
+        <span class="db-dot" aria-hidden="true"></span>
+        <span class="db-status__text">جارٍ التحقّق…</span>
+      </div>
+      <button type="button" class="sidebar__link" data-theme-toggle aria-pressed="false">
+        {% include "icons/theme.svg" %}<span>الوضع <span data-theme-label>نهاري</span></span>
+      </button>
+    </div>
+  </aside>
+  <div class="sidebar__scrim" id="sidebarScrim" hidden></div>
+
+  <main class="layout">
+    <section class="editor" aria-label="محرّر الأفيش">
+      <div class="panel">
+        <div class="panel__head">
+          <h2>إعداد الأفيش</h2>
+          <p>اختر الفرق بالاسم أو الشعار، وسيُملأ الملعب والتاريخ تلقائياً.</p>
+        </div>
+
+        <div class="field">
+          <label for="competition">المسابقة</label>
+          <select id="competition"></select>
+          <p class="field__help">اختيار المسابقة يغيّر العنوان والشعار — ويمكنك تعديلهما بحرّية.</p>
+        </div>
+
+        <div class="field">
+          <label>نوع الأفيش</label>
+          <div class="title-mode" role="radiogroup" aria-label="نوع الأفيش">
+            <label class="seg"><input type="radio" name="posterType" value="scheduling" checked><span>تعيينات (مواعيد)</span></label>
+            <label class="seg"><input type="radio" name="posterType" value="scoring"><span>نتائج (بالنتيجة)</span></label>
+          </div>
+          <p class="field__help" id="typeHelp">في وضع «النتائج» تُدخل نتيجة كل مباراة يدوياً بدل التوقيت.</p>
+        </div>
+
+        <div class="field">
+          <label>عنوان الأفيش</label>
+          <div class="title-mode" role="radiogroup" aria-label="مصدر العنوان">
+            <label class="seg"><input type="radio" name="titleMode" value="auto" checked><span>تلقائي</span></label>
+            <label class="seg"><input type="radio" name="titleMode" value="manual"><span>يدوي</span></label>
+          </div>
+          <p class="field__help" id="titleAutoHelp">سيُستعمل عنوان جاهز حسب نوع الأفيش.</p>
+          <textarea id="title" rows="3" spellcheck="false" dir="auto" hidden></textarea>
+          <div class="title-controls" id="titleControls">
+            <div class="title-controls__item">
+              <label for="titleFont">خط العنوان</label>
+              <select id="titleFont"></select>
+            </div>
+            <div class="title-controls__item">
+              <label for="titleSize">حجم العنوان <span id="titleSizeVal">100%</span></label>
+              <input type="range" id="titleSize" min="0.6" max="1.6" step="0.05" value="1">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>شعار المسابقة (أعلى الأفيش)</label>
+          <div class="logo-picker">
+            <span class="logo-picker__preview" id="brandPreview"></span>
+            <div class="logo-picker__actions">
+              <label class="btn btn--ghost" for="brandUpload">
+                {% include "icons/upload.svg" %}<span>رفع شعار</span>
+              </label>
+              <input type="file" id="brandUpload" accept="image/*" hidden>
+              <button type="button" class="btn btn--ghost" id="brandReset">استعادة</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="matchDate">تاريخ الجولة</label>
+          <div class="field__row">
+            <input type="date" id="matchDate" value="2026-08-23" dir="ltr">
+            <span class="date-preview" id="datePreview" dir="auto">—</span>
+          </div>
+        </div>
+
+        <!-- Results bulletin — shown for a «نتائج» poster -->
+        <div class="field" id="resultsPasteField">
+          <div class="field__labelrow">
+            <label for="bulletinText">لصق النتائج (نص)</label>
+            <button type="button" class="btn btn--ghost" id="parseBulletinBtn">
+              {% include "icons/trophy.svg" %}<span>استخراج وتعبئة</span>
+            </button>
+          </div>
+          <textarea id="bulletinText" class="bulletin" rows="5" dir="ltr"
+                    placeholder="CA 1 / OB 1&#10;USM 3 / ASS 0&#10;CSS 3 / ESS 1&#10;&#10;CLASSEMENT&#10;CA 66&#10;EST 63"></textarea>
+          <p class="field__help">الصق نصّ نتائج الجولة — تُستخرج النتائج وتُختار الفرق من الرموز تلقائياً، ويُعبّأ الترتيب إن وُجد.</p>
+          <p class="hint" id="bulletinHint"></p>
+        </div>
+
+        <!-- Fixtures bulletin — shown for a «تعيينات» poster -->
+        <div class="field" id="fixturesPasteField">
+          <div class="field__labelrow">
+            <label for="fixturesText">لصق التعيينات (نص)</label>
+            <div class="field__labelrow-actions">
+              <label class="btn btn--ghost" for="fixturesPdf">
+                {% include "icons/upload.svg" %}<span>رفع PDF</span>
+              </label>
+              <input type="file" id="fixturesPdf" accept="application/pdf,.pdf" hidden>
+              <button type="button" class="btn btn--ghost" id="parseFixturesBtn">
+                {% include "icons/trophy.svg" %}<span>استخراج وتعبئة</span>
+              </button>
+            </div>
+          </div>
+          <textarea id="fixturesText" class="bulletin" rows="5" dir="rtl"
+                    placeholder="السبت 22 أوت 2026&#10;الهادي النيفر باردو   س16و30د   الملعب التونسي/النادي الرياضي الصفاقسي&#10;--------   س16و30د   الأمل الرياضي بحمام سوسة/الإتحاد الرياضي المنستيري"></textarea>
+          <p class="field__help">الصق نصّ التعيينات أو ارفع ملف PDF — يُستخرج التاريخ والتوقيت والملعب والفريقان تلقائياً. الشرطات «-----» تعني ملعباً غير محدّد.</p>
+          <p class="hint" id="fixturesHint"></p>
+        </div>
+
+        <div class="field">
+          <div class="field__labelrow">
+            <label>المباريات</label>
+            <div class="field__labelrow-actions">
+              {% if render_ctx.squad == 'ligue1' %}
+              <button type="button" class="btn btn--ghost" id="fetchScoresBtn"
+                      title="جلب نتائج هذا اليوم من API-Football">
+                {% include "icons/trophy.svg" %}<span>جلب النتائج</span>
+              </button>
+              {% endif %}
+              <button type="button" class="btn btn--ghost" id="addMatch">
+                {% include "icons/plus.svg" %}<span>إضافة مباراة</span>
+              </button>
+            </div>
+          </div>
+          <div id="matchList" class="match-list"></div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn--primary" id="downloadBtn">
+            {% include "icons/download.svg" %}<span>تحميل الأفيش (PNG)</span>
+          </button>
+          <button type="button" class="btn btn--gold" id="saveBtn">
+            {% include "icons/save.svg" %}<span>حفظ</span>
+          </button>
+          <button type="button" class="btn btn--ghost" id="loadBtn">
+            {% include "icons/folder.svg" %}<span>المحفوظات</span>
+          </button>
+        </div>
+        <p class="hint" id="hint"></p>
+      </div>
+
+      <aside class="preview">
+        <div class="preview__head">
+          <h2>معاينة مباشرة</h2>
+          <span class="badge" id="previewBadge">جاهز</span>
+        </div>
+        <div class="preview__stage" id="previewStage">
+          <img id="previewImg" alt="معاينة الأفيش" hidden />
+          <p class="preview__empty" id="previewEmpty">اختر الفرق لعرض المعاينة…</p>
+          <div class="preview__spinner" id="previewSpinner" hidden><span></span></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<!-- Saved match-days dialog -->
+<dialog id="savedDialog" class="dialog">
+  <div class="dialog__head">
+    <h3>الأفيشات المحفوظة</h3>
+    <button type="button" class="icon-btn" data-close>&times;</button>
+  </div>
+  <ul id="savedList" class="saved-list"></ul>
+</dialog>
+
+<!-- Row template -->
+<template id="matchRowTpl">
+  <div class="match-row" dir="rtl">
+    <div class="match-row__grip" title="ترتيب">{% include "icons/grip.svg" %}</div>
+    <div class="team-pick" data-side="home">
+      <span class="team-pick__label">المستقبِل</span>
+      <button type="button" class="team-select"><span class="team-select__logo"></span><span class="team-select__name" dir="auto">اختر فريقاً</span></button>
+    </div>
+    <div class="match-row__center">
+      <input type="time" class="match-time" value="16:30">
+      <div class="match-score">
+        <input type="text" class="match-score__h" inputmode="numeric" maxlength="2" placeholder="0" aria-label="نتيجة المستقبِل">
+        <span class="match-score__sep">-</span>
+        <input type="text" class="match-score__a" inputmode="numeric" maxlength="2" placeholder="0" aria-label="نتيجة الضيف">
+      </div>
+      <div class="vs">ضد</div>
+    </div>
+    <div class="team-pick" data-side="away">
+      <span class="team-pick__label">الضيف</span>
+      <button type="button" class="team-select"><span class="team-select__logo"></span><span class="team-select__name" dir="auto">اختر فريقاً</span></button>
+    </div>
+    <input type="text" class="match-stadium" dir="auto" placeholder="الملعب (تلقائي)">
+    <button type="button" class="match-tv" title="القنوات الناقلة">
+      {% include "icons/tv.svg" %}<span class="match-tv__label">القنوات</span>
+      <span class="match-tv__logos"></span>
+    </button>
+    <button type="button" class="icon-btn icon-btn--danger match-remove" title="حذف">{% include "icons/trash.svg" %}</button>
+  </div>
+</template>
+
+<!-- Channel picker: checkboxes, capped at the registry maximum -->
+<div id="channelMenu" class="team-menu channel-menu" hidden>
+  <p class="channel-menu__head">القنوات الناقلة <span id="channelCount"></span></p>
+  <ul id="channelOptions"></ul>
+</div>
+
+<!-- Team picker dropdown (populated by JS) -->
+<div id="teamMenu" class="team-menu" hidden>
+  <input type="search" id="teamSearch" placeholder="بحث بالاسم…" autocomplete="off">
+  <ul id="teamOptions"></ul>
+</div>
+
+<script id="teamsData" type="application/json">{{ teams | tojson }}</script>
+<script id="selectedComp" type="application/json">{{ selected | tojson }}</script>
+<script id="renderCtx" type="application/json">{{ render_ctx | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

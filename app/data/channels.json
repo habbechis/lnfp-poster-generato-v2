@@ -1,0 +1,10 @@
+{
+  "max_per_match": 4,
+  "channels": [
+    { "code": "watania1",     "name_ar": "الوطنية 1",        "logo": "watania1.png" },
+    { "code": "watania2",     "name_ar": "الوطنية 2",        "logo": "watania2.png" },
+    { "code": "wataniasport", "name_ar": "الوطنية الرياضية", "logo": "wataniasport.png" },
+    { "code": "elkess",       "name_ar": "قناة الكأس",       "logo": "elkess.png" },
+    { "code": "diwansport",   "name_ar": "ديوان سبور",       "logo": "diwansport.png" }
+  ]
+}
