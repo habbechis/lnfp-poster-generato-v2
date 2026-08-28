@@ -370,6 +370,19 @@ def _paste_title_image(base, name, right_x, cy, max_w, max_h):
 
 
 @lru_cache(maxsize=24)
+def _clean_stadium_display(value) -> str:
+    """Remove stray punctuation accidentally carried into stadium labels.
+
+    Some pasted/PDF-derived fixture rows can append the old placeholder
+    ``(:)`` or ``:)`` after the ground name.  Clean only those exact trailing
+    placeholders at render time; legitimate parentheses inside a stadium name
+    remain untouched.
+    """
+    text = str(value or "").strip()
+    text = re.sub(r"\s*(?:\(\s*:\s*\)|:\)|\(:)\s*$", "", text)
+    return text.strip()
+
+
 def _stadium_glyph(h: int):
     """The supplied stadium illustration, scaled to ``h`` pixels tall."""
     art = _asset("icon-stadium.png")
@@ -682,7 +695,7 @@ def render_poster(title: str, date_label: str, matches: Iterable[dict],
             # Both marks share one fixed column near the panel edge; the
             # stadium name and the channel logos stay centred on the panel.
             icon_col = cx_mid + bar_h * 1.02
-            stadium = (m.get("stadium_ar") or "").strip()
+            stadium = _clean_stadium_display(m.get("stadium_ar"))
             if stadium:
                 ssize = int(min(34, bar_h * 0.15))
                 sy = mid + bar_h * (0.08 if channels else 0.28)
