@@ -987,6 +987,8 @@ if (isKickoff()) fillKickoff(data); else fillFixtures(data);
     updateTitleSizeLabel(); schedulePreview();
   });
   el.date.addEventListener("input", schedulePreview);
+    const matchweekInput = $("#matchweek");
+  if (matchweekInput) matchweekInput.addEventListener("input", schedulePreview);
   el.brandUpload.addEventListener("change", onBrandUpload);
   el.brandReset.addEventListener("click", resetBrand);
   const navSaved = $("#navSaved");
