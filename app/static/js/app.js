@@ -526,6 +526,7 @@ const c = channels.find((x) => x.code === code);
   }
 
   async function updatePreview() {
+    if (isKickoff()) return updateKickoffPreview();
     const payload = buildPayload();
     if (payload.matches.length === 0) {
       setBadge("أضف مباراة", "loading");
@@ -589,6 +590,7 @@ const c = channels.find((x) => x.code === code);
   }
 
   async function download() {
+    if (isKickoff()) return downloadKickoff();
     const payload = buildPayload();
     if (payload.matches.length === 0) return hint("أضف مباراة واحدة على الأقل.", "err");
     hint("جارٍ تجهيز الملف بدقة كاملة…");
