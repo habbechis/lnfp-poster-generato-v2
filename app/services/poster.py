@@ -374,12 +374,12 @@ def _clean_stadium_display(value) -> str:
     """Remove stray punctuation accidentally carried into stadium labels.
 
     Some pasted/PDF-derived fixture rows can append the old placeholder
-    ``(:)`` or ``:)`` after the ground name.  Clean only those exact trailing
-    placeholders at render time; legitimate parentheses inside a stadium name
-    remain untouched.
+    ``(:)`` or ``:)`` or ``():`` after the ground name.  Clean only those
+    exact trailing placeholders at render time; legitimate parentheses
+    inside a stadium name remain untouched.
     """
     text = str(value or "").strip()
-text = re.sub(r"\s*(?:\(\s*\)\s*:|\(\s*:\s*\)|:\)|\(:)\s*$", "", text)
+    text = re.sub(r"\s*(?:\(\s*\)\s*:|\(\s*:\s*\)|:\)|\(:)\s*$", "", text)
     return text.strip()
 
 
