@@ -249,6 +249,90 @@ def _digits(value) -> str:
 def _slug(text: str) -> str:
     text = re.sub(r"\s+", "-", (text or "").strip())
     return re.sub(r"[^0-9A-Za-z\-]", "", text) or "poster"
+# ---------------------------------------------------------------------------
+# ضيف هذا الكود فـ app/routes/api.py
+# مكان الحطة: بعد دالة _slug() وقبل قسم "# Poster rendering" — أو أي مكان
+# بعد الـ imports وقبل أول استعمال. يستعمل نفس الأدوات الموجودة فوقو بالملف
+# (team_side, poster, _render_error, _slug, request, jsonify, Response...).
+# ---------------------------------------------------------------------------
+
+def _build_kickoff_model(payload: dict) -> dict:
+    """Same shape fixtures_parser.parse() returns, plus a matchweek number.
+
+    Payload:
+      {"matchweek": 3, "brand_logo": "...", "background": "...",
+       "days": [{"date_label": "...",
+                 "matches": [{"home": "EST", "away": "ESS", "time": "16:30"},
+                             ...]}, ...]}
+    Team codes are resolved the same way the fixtures poster does.
+    """
+    try:
+        matchweek = int(payload.get("matchweek") or 1)
+    except (TypeError, ValueError):
+        matchweek = 1
+    brand_logo = (payload.get("brand_logo") or "").strip() or None
+    background = (payload.get("background") or "").strip()
+    background = background if background in BACKGROUNDS else None
+
+    days = []
+    for d in payload.get("days", []):
+        matches = []
+        for m in d.get("matches", []):
+            home_code, away_code = m.get("home"), m.get("away")
+            if not home_code or not away_code:
+                continue
+            home = team_side(home_code)
+            away = team_side(away_code)
+            home["logo_dir"] = home.pop("logo_dir", "logos")
+            away["logo_dir"] = away.pop("logo_dir", "logos")
+            matches.append({"home": home, "away": away,
+                            "time": (m.get("time") or "16:30").strip()})
+        if matches:
+            days.append({"date_label": (d.get("date_label") or "").strip(),
+                        "matches": matches})
+
+    return {"matchweek": matchweek, "brand_logo": brand_logo,
+            "background": background, "days": days}
+
+
+@bp.post("/kickoff/preview")
+@require_auth
+def kickoff_preview():
+    """Render a downscaled PNG for the live on-screen preview."""
+    model = _build_kickoff_model(request.get_json(force=True, silent=True) or {})
+    if not model["days"]:
+        return jsonify({"error": "add at least one match"}), 400
+    try:
+        png = poster.render_kickoff_png_bytes(
+            model["matchweek"], model["days"],
+            brand_logo=model["brand_logo"], background=model["background"],
+            scale=0.55)
+    except Exception as exc:
+        return _render_error(exc)
+    return Response(png, mimetype="image/png",
+                    headers={"Cache-Control": "no-store"})
+
+
+@bp.post("/kickoff/generate")
+@require_auth
+def kickoff_generate():
+    """Render the full-resolution PNG and offer it as a download."""
+    payload = request.get_json(force=True, silent=True) or {}
+    model = _build_kickoff_model(payload)
+    if not model["days"]:
+        return jsonify({"error": "add at least one match"}), 400
+    try:
+        png = poster.render_kickoff_png_bytes(
+            model["matchweek"], model["days"],
+            brand_logo=model["brand_logo"], background=model["background"],
+            scale=1.0)
+    except Exception as exc:
+        return _render_error(exc)
+    fname = f"lnfp-kickoff-{model['matchweek']}.png"
+    return Response(png, mimetype="image/png", headers={
+        "Content-Disposition": f'attachment; filename="{fname}"',
+        "Cache-Control": "no-store",
+    })
 
 
 # --------------------------------------------------------------------------- #
