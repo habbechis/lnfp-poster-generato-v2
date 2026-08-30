@@ -900,7 +900,7 @@ const c = channels.find((x) => x.code === code);
       });
       const data = await res.json();
       if (data.error) { fixturesHint(data.error, "err"); return; }
-      fillFixtures(data);
+if (isKickoff()) fillKickoff(data); else fillFixtures(data);
     } catch (err) {
       fixturesHint("تعذّر تحليل النص.", "err");
     } finally {
@@ -918,7 +918,7 @@ const c = channels.find((x) => x.code === code);
       const res = await fetch("/api/parse-fixtures", { method: "POST", body: fd });
       const data = await res.json();
       if (data.error) { fixturesHint(data.error, "err"); return; }
-      fillFixtures(data);
+if (isKickoff()) fillKickoff(data); else fillFixtures(data);
     } catch (err) {
       fixturesHint("تعذّر قراءة ملف PDF.", "err");
     }
