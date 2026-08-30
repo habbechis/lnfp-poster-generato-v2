@@ -850,7 +850,41 @@ const c = channels.find((x) => x.code === code);
       bits.push(`— غير معروف: ${data.unknown.join("، ")}`);
     fixturesHint(bits.join(" "), missing || others.length ? "" : "ok");
   }
+  function fillKickoff(data) {
+    const days = (data.days || [])
+      .filter((d) => d.matches.some((m) => m.home && m.away));
+    if (!days.length) {
+      fixturesHint((data.unknown || []).length
+        ? `لم يُتعرَّف على أي مباراة. غير معروف: ${data.unknown.join("، ")}`
+        : "لم يُتعرَّف على أي مباراة في النص.", "err");
+      return;
+    }
+    kickoffDays = days.map((d) => ({
+      date_label: d.date_label || "",
+      matches: d.matches.filter((m) => m.home && m.away).map((m) => ({
+        home: m.home, away: m.away, time: m.time || "16:30",
+      })),
+    }));
+    const total = kickoffDays.reduce((n, d) => n + d.matches.length, 0);
+    const missing = days.reduce(
+      (n, d) => n + d.matches.filter((m) => !m.home || !m.away).length, 0);
+    const bits = [`تم تحميل ${total} مباراة على ${kickoffDays.length} يوم/أيام`];
+    if (missing) bits.push(`— ${missing} مباراة بفريق غير معروف`);
+    if ((data.unknown || []).length)
+      bits.push(`— غير معروف: ${data.unknown.join("، ")}`);
+    fixturesHint(bits.join(" "), missing ? "" : "ok");
+    schedulePreview();
+  }
 
+  function buildKickoffPayload() {
+    const mw = parseInt(($("#matchweek") || {}).value, 10) || 1;
+    return {
+      matchweek: mw,
+      brand_logo: brandLogo,
+      background: CTX.background || "",
+      days: kickoffDays,
+    };
+  }
   async function parseFixturesText() {
     const box = $("#fixturesText");
     const text = (box && box.value || "").trim();
