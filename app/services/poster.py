@@ -379,7 +379,7 @@ def _clean_stadium_display(value) -> str:
     remain untouched.
     """
     text = str(value or "").strip()
-    text = re.sub(r"\s*(?:\(\s*:\s*\)|:\)|\(:)\s*$", "", text)
+text = re.sub(r"\s*(?:\(\s*\)\s*:|\(\s*:\s*\)|:\)|\(:)\s*$", "", text)
     return text.strip()
 
 
