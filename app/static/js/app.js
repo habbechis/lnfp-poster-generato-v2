@@ -117,6 +117,7 @@
     || "auto";
 
   const isResults = () => posterTypeVal() === "scoring";
+    const isKickoff = () => posterTypeVal() === "kickoff";
 
   // The starter text for the manual box: the results heading for a scoring
   // poster, otherwise the competition's own fixtures title.
