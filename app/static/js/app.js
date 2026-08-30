@@ -138,27 +138,30 @@
     return isResults() ? "title-results.png" : "title-fixtures.png";
   }
 
-  function applyTitleMode() {
+    function applyTitleMode() {
     const manual = titleModeVal() === "manual";
-    el.title.hidden = !manual;
-    el.titleAutoHelp.hidden = manual;
-    el.titleControls.hidden = !manual;   // face & size only apply to typed text
-    // In manual mode, seed the box to match the chosen type, so picking
-    // «نتائج» swaps the fixtures heading for the results heading.
-    if (manual) el.title.value = typeDefaultTitle();
-    // Each poster type gets its own paste box: results text vs the fixtures
-    // bulletin — only the one that applies is on screen.
+    const kickoff = isKickoff();
+    el.title.hidden = !manual || kickoff;
+    el.titleAutoHelp.hidden = manual || kickoff;
+    el.titleControls.hidden = !manual || kickoff;
+    const titleField = $("#titleField");
+    if (titleField) titleField.hidden = kickoff;
+    const kickoffField = $("#kickoffField");
+    if (kickoffField) kickoffField.hidden = !kickoff;
+    const matchesField = $("#matchesField");
+    if (matchesField) matchesField.hidden = kickoff;
+    if (!kickoff && manual) el.title.value = typeDefaultTitle();
     const results = isResults();
     const resultsPaste = $("#resultsPasteField");
     const fixturesPaste = $("#fixturesPasteField");
     if (resultsPaste) resultsPaste.hidden = !results;
     if (fixturesPaste) fixturesPaste.hidden = results;
-    renderMatches();     // switch fixture rows to/from the score layout
+    renderMatches();
     schedulePreview();
   }
 
   const channelLogo = (code) => {
-    const c = channels.find((x) => x.code === code);
+const c = channels.find((x) => x.code === code);
     return c ? `/static/tv/${c.logo}` : "";
   };
 
