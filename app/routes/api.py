@@ -220,7 +220,7 @@ def _build_render_model(payload: dict) -> dict:
         if mode == "results":
             sh = _digits(m.get("score_home")) or "0"
             sa = _digits(m.get("score_away")) or "0"
-            rec["score"] = f"{sh} - {sa}"
+            rec["score"] = f"{sa} - {sh}"
         else:
             # Stadium: explicit override, else the home team's home ground.
             stadium = (m.get("stadium_ar") or "").strip()
