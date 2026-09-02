@@ -845,3 +845,202 @@ def render_standings_png_bytes(*args, **kwargs) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+    
+# ---------------------------------------------------------------------------
+# ضيف هذا الكود فـ app/services/poster.py — أي مكان بعد render_standings
+# وقبل render_png_bytes. يستعمل نفس الـ helpers الموجودة فوقو فالملف
+# (WHITE, CRYSTAL, BG_PATH, _draw_text, _fit_font, _paste_contained,
+#  _logo_path, _paste_brand_logo, _clean_stadium_display, W, H).
+# ---------------------------------------------------------------------------
+
+GLOW_RED = (255, 40, 40, 255)
+CARD_FILL = (70, 6, 8, 200)          # dark translucent red — the card body
+CARD_EDGE = (255, 70, 70, 160)       # sharp inner border
+PILL_FILL = (10, 3, 4, 235)          # near-black time capsule
+
+
+def _glow_rounded_rect(base, box, radius, glow_color=GLOW_RED,
+                       fill=None, blur=10, glow_alpha=140):
+    """A rounded rectangle with a soft outer glow — the KICK OFF card/pill look.
+
+    Drawn as three layers: a blurred halo (the glow), the flat body fill,
+    then a crisp 2px edge on top so the border still reads at full size.
+    """
+    x0, y0, x1, y1 = (int(v) for v in box)
+    w, h = x1 - x0, y1 - y0
+    if w <= 0 or h <= 0:
+        return
+    pad = blur * 3
+
+    # Halo: a rounded outline, blurred, sitting behind everything.
+    halo = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(halo)
+    hd.rounded_rectangle((pad, pad, pad + w, pad + h), radius=radius,
+                         outline=(*glow_color[:3], glow_alpha), width=6)
+    halo = halo.filter(ImageFilter.GaussianBlur(blur))
+    base.alpha_composite(halo, (x0 - pad, y0 - pad))
+
+    # Body.
+    if fill:
+        body = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(body).rounded_rectangle((0, 0, w - 1, h - 1),
+                                               radius=radius, fill=fill)
+        base.alpha_composite(body, (x0, y0))
+
+    # Crisp edge on top.
+    d = ImageDraw.Draw(base)
+    d.rounded_rectangle((x0, y0, x1 - 1, y1 - 1), radius=radius,
+                        outline=CARD_EDGE, width=2)
+
+
+def _time_pill(base, cx, cy, text, h=64):
+    """The glowing black capsule that carries the kick-off time."""
+    draw = ImageDraw.Draw(base)
+    size = int(h * 0.5)
+    tw = _text_w(draw, text, _font(size, "ExtraBold", "time"), rtl=False)
+    w = max(h * 1.7, tw + h * 0.7)
+    box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+    _glow_rounded_rect(base, box, radius=int(h / 2), fill=PILL_FILL,
+                       blur=8, glow_alpha=150)
+    _draw_text(draw, (cx, cy), text, size, "ExtraBold", fill=WHITE,
+              anchor="mm", rtl=False, role="time")
+
+
+def render_kickoff(matchweek, days: list[dict],
+                   brand_logo: str | None = None,
+                   background: str | None = None,
+                   scale: float = 1.0) -> Image.Image:
+    """Render the "KICK OFF" round-preview poster.
+
+    ``days`` follows the same shape fixtures_parser.parse() returns:
+    [{"date_label": "السبت 05 سبتمبر 2026",
+      "matches": [{"home": {...}, "away": {...}, "time": "16:30"}, ...]}, ...]
+    Club names are drawn in Arabic (name_ar), same roster/crests as the other
+    poster types — no separate English labels.
+    """
+    bg_path = BG_PATH
+    if background:
+        cand = os.path.join(STATIC, "img", os.path.basename(background))
+        if os.path.exists(cand):
+            bg_path = cand
+    base = Image.open(bg_path).convert("RGBA")
+    if base.size != (W, H):
+        base = base.resize((W, H), Image.LANCZOS)
+    draw = ImageDraw.Draw(base)
+
+    # ---- header: competition badge, "KICK OFF" + "MATCHWEEK #N" ------------
+    cy = 230
+    _paste_brand_logo(base, cx=W / 2, cy=cy, box_w=210, box_h=210,
+                      spec=brand_logo)
+    draw = ImageDraw.Draw(base)
+    ty = cy + 150
+    _draw_text(draw, (W / 2, ty), "KICK OFF", 128, "ExtraBold",
+              fill=WHITE, anchor="mm", rtl=False, role="time")
+    ty += 96
+    label = f"MATCHWEEK #{int(matchweek):02d}" if str(matchweek).isdigit() \
+        else f"MATCHWEEK {matchweek}"
+    _draw_text(draw, (W / 2, ty), label, 62, "Bold",
+              fill=CRYSTAL, anchor="mm", rtl=False, role="time")
+    content_top = ty + 70
+
+    # ---- lay out rows: each day = a header line + one card holding its
+    #      matches. Row/day-header heights shrink uniformly to fit the fixed
+    #      canvas when the round has many fixtures. ------------------------
+    days = [d for d in days if d.get("matches")]
+    n_matches = sum(len(d["matches"]) for d in days)
+    n_days = max(1, len(days))
+    region_top, region_bot = content_top + 40, 2440
+    avail = region_bot - region_top
+
+    day_hdr_h = 70
+    card_gap = 26      # space between day cards
+    row_gap = 4        # divider gap between rows inside a card
+    card_pad = 14      # inner top/bottom padding of a card
+
+    def _total_h(row_h):
+        return (n_days * day_hdr_h + n_matches * row_h
+                + (n_matches - n_days) * row_gap  # dividers, not after last row
+                + n_days * card_pad * 2 + (n_days - 1) * card_gap)
+
+    row_h = 150.0
+    while row_h > 70 and _total_h(row_h) > avail:
+        row_h -= 4
+    day_hdr_h = min(day_hdr_h, max(44, day_hdr_h * (row_h / 150.0)))
+
+    y = region_top + max(0, (avail - _total_h(row_h)) / 2)
+    crest = row_h * 0.86
+    name_size = int(min(34, row_h * 0.20))
+    time_h = min(64, row_h * 0.42)
+
+    for day in days:
+        # Date header, flanked by hairlines.
+        _draw_text(draw, (W / 2, y + day_hdr_h / 2), day.get("date_label", ""),
+                  int(min(44, day_hdr_h * 0.6)), "Bold", fill=WHITE,
+                  anchor="mm")
+        line_w, line_y = 260, y + day_hdr_h / 2
+        d = ImageDraw.Draw(base)
+        d.line([(140, line_y), (W / 2 - line_w, line_y)],
+              fill=CRYSTAL_EDGE, width=2)
+        d.line([(W / 2 + line_w, line_y), (W - 140, line_y)],
+              fill=CRYSTAL_EDGE, width=2)
+        y += day_hdr_h
+
+        matches = day["matches"]
+        card_h = (len(matches) * row_h + (len(matches) - 1) * row_gap
+                 + card_pad * 2)
+        card_box = (140, y, W - 140, y + card_h)
+        _glow_rounded_rect(base, card_box, radius=int(row_h * 0.22),
+                           fill=CARD_FILL, blur=9, glow_alpha=110)
+        draw = ImageDraw.Draw(base)
+
+        ry = y + card_pad
+        for i, m in enumerate(matches):
+            mid = ry + row_h / 2
+            home, away = m.get("home", {}), m.get("away", {})
+            home_cx = (W - 280) * 0.78 + 140
+            away_cx = (W - 280) * 0.22 + 140
+            time_cx = W / 2
+
+            _paste_contained(base, _logo_path(home.get("logo"),
+                                              home.get("logo_dir", "logos")),
+                             home_cx, mid, crest, crest)
+            _paste_contained(base, _logo_path(away.get("logo"),
+                                              away.get("logo_dir", "logos")),
+                             away_cx, mid, crest, crest)
+            draw = ImageDraw.Draw(base)
+
+            for cx, team, anchor in ((home_cx, home, "right"),
+                                     (away_cx, away, "left")):
+                name = (team.get("name_ar") or "").strip()
+                if not name:
+                    continue
+                gap = crest / 2 + 24
+                tx = cx - gap if anchor == "right" else cx + gap
+                a = "rm" if anchor == "right" else "lm"
+                nsize = _fit_font(draw, name, 340, name_size, "Bold",
+                                  min_size=18)
+                _draw_text(draw, (tx, mid), name, nsize, "Bold",
+                          fill=WHITE, anchor=a)
+
+            _time_pill(base, time_cx, mid, m.get("time", "16:30"), h=time_h)
+            draw = ImageDraw.Draw(base)
+
+            ry += row_h
+            if i < len(matches) - 1:
+                dl = ImageDraw.Draw(base)
+                dl.line([(180, ry + row_gap / 2), (W - 180, ry + row_gap / 2)],
+                       fill=(255, 255, 255, 30), width=2)
+                ry += row_gap
+
+        y += card_h + card_gap
+
+    if scale != 1.0:
+        base = base.resize((int(W * scale), int(H * scale)), Image.LANCZOS)
+    return base.convert("RGB")
+
+
+def render_kickoff_png_bytes(*args, **kwargs) -> bytes:
+    img = render_kickoff(*args, **kwargs)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
