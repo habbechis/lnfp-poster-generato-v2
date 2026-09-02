@@ -61,6 +61,7 @@
 
   // In-memory model: one entry per fixture row.
   let matches = [];
+  let kickoffDays = [];   // KICK OFF: [{date_label, matches:[{home,away,time}]}]
   let activePicker = null; // { index, side }
   let currentBlobUrl = null;
   let previewTimer = null;
@@ -117,7 +118,7 @@
     || "auto";
 
   const isResults = () => posterTypeVal() === "scoring";
-    const isKickoff = () => posterTypeVal() === "kickoff";
+  const isKickoff = () => posterTypeVal() === "kickoff";
 
   // The starter text for the manual box: the results heading for a scoring
   // poster, otherwise the competition's own fixtures title.
@@ -138,7 +139,7 @@
     return isResults() ? "title-results.png" : "title-fixtures.png";
   }
 
-    function applyTitleMode() {
+  function applyTitleMode() {
     const manual = titleModeVal() === "manual";
     const kickoff = isKickoff();
     el.title.hidden = !manual || kickoff;
@@ -161,7 +162,7 @@
   }
 
   const channelLogo = (code) => {
-const c = channels.find((x) => x.code === code);
+    const c = channels.find((x) => x.code === code);
     return c ? `/static/tv/${c.logo}` : "";
   };
 
@@ -573,6 +574,85 @@ const c = channels.find((x) => x.code === code);
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /* KICK OFF: preview + download (own endpoints, own payload shape)     */
+  /* ------------------------------------------------------------------ */
+  function buildKickoffPayload() {
+    const mw = parseInt(($("#matchweek") || {}).value, 10) || 1;
+    return {
+      matchweek: mw,
+      brand_logo: brandLogo,
+      background: CTX.background || "",
+      days: kickoffDays,
+    };
+  }
+
+  async function updateKickoffPreview() {
+    const payload = buildKickoffPayload();
+    if (!payload.days.length) {
+      setBadge("أضف مباريات", "loading");
+      showEmpty("الصق نصّ تعيينات الجولة لعرض المعاينة…");
+      return;
+    }
+    if (previewAbort) previewAbort.abort();
+    const ctrl = new AbortController();
+    previewAbort = ctrl;
+    const seq = ++previewSeq;
+    setSpinner(true); setBadge("جارٍ التوليد…", "loading");
+    try {
+      const res = await fetch("/api/kickoff/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error(await errorText(res));
+      const blob = await res.blob();
+      if (seq !== previewSeq) return;
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = URL.createObjectURL(blob);
+      await new Promise((resolve) => {
+        el.previewImg.onload = el.previewImg.onerror = resolve;
+        el.previewImg.src = currentBlobUrl;
+      });
+      if (seq !== previewSeq) return;
+      el.previewImg.hidden = false;
+      el.previewEmpty.hidden = true;
+      setBadge("جاهز", "ok");
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setBadge("خطأ", "err");
+      showEmpty("تعذّر توليد المعاينة.");
+      hint(err.message, "err");
+    } finally {
+      if (seq === previewSeq) { setSpinner(false); previewAbort = null; }
+    }
+  }
+
+  async function downloadKickoff() {
+    const payload = buildKickoffPayload();
+    if (!payload.days.length) return hint("الصق تعيينات الجولة أولاً.", "err");
+    hint("جارٍ تجهيز الملف بدقة كاملة…");
+    try {
+      const res = await fetch("/api/kickoff/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await errorText(res));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lnfp-kickoff-${payload.matchweek}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      hint("تم تحميل الأفيش بنجاح.", "ok");
+    } catch (err) {
+      hint(err.message, "err");
+    }
+  }
+
   function showEmpty(text) {
     el.previewEmpty.textContent = text;
     el.previewEmpty.hidden = false;
@@ -852,6 +932,9 @@ const c = channels.find((x) => x.code === code);
       bits.push(`— غير معروف: ${data.unknown.join("، ")}`);
     fixturesHint(bits.join(" "), missing || others.length ? "" : "ok");
   }
+
+  /** Same bulletin as fillFixtures(), but keeps every day — not just the one
+      matching the date picker — for the KICK OFF round-preview poster. */
   function fillKickoff(data) {
     const days = (data.days || [])
       .filter((d) => d.matches.some((m) => m.home && m.away));
@@ -878,15 +961,6 @@ const c = channels.find((x) => x.code === code);
     schedulePreview();
   }
 
-  function buildKickoffPayload() {
-    const mw = parseInt(($("#matchweek") || {}).value, 10) || 1;
-    return {
-      matchweek: mw,
-      brand_logo: brandLogo,
-      background: CTX.background || "",
-      days: kickoffDays,
-    };
-  }
   async function parseFixturesText() {
     const box = $("#fixturesText");
     const text = (box && box.value || "").trim();
@@ -902,7 +976,7 @@ const c = channels.find((x) => x.code === code);
       });
       const data = await res.json();
       if (data.error) { fixturesHint(data.error, "err"); return; }
-if (isKickoff()) fillKickoff(data); else fillFixtures(data);
+      if (isKickoff()) fillKickoff(data); else fillFixtures(data);
     } catch (err) {
       fixturesHint("تعذّر تحليل النص.", "err");
     } finally {
@@ -920,7 +994,7 @@ if (isKickoff()) fillKickoff(data); else fillFixtures(data);
       const res = await fetch("/api/parse-fixtures", { method: "POST", body: fd });
       const data = await res.json();
       if (data.error) { fixturesHint(data.error, "err"); return; }
-if (isKickoff()) fillKickoff(data); else fillFixtures(data);
+      if (isKickoff()) fillKickoff(data); else fillFixtures(data);
     } catch (err) {
       fixturesHint("تعذّر قراءة ملف PDF.", "err");
     }
@@ -987,7 +1061,7 @@ if (isKickoff()) fillKickoff(data); else fillFixtures(data);
     updateTitleSizeLabel(); schedulePreview();
   });
   el.date.addEventListener("input", schedulePreview);
-    const matchweekInput = $("#matchweek");
+  const matchweekInput = $("#matchweek");
   if (matchweekInput) matchweekInput.addEventListener("input", schedulePreview);
   el.brandUpload.addEventListener("change", onBrandUpload);
   el.brandReset.addEventListener("click", resetBrand);
