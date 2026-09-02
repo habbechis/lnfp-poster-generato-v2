@@ -1022,3 +1022,12 @@ def render_kickoff(matchweek, days: list[dict],
     if scale != 1.0:
         base = base.resize((int(W * scale), int(H * scale)), Image.LANCZOS)
     return base.convert("RGB")
+    
+    
+    
+    
+    def render_kickoff_png_bytes(*args, **kwargs) -> bytes:
+        img = render_kickoff(*args, **kwargs)
+        buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
