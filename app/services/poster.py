@@ -853,71 +853,60 @@ def render_standings_png_bytes(*args, **kwargs) -> bytes:
 #  _logo_path, _paste_brand_logo, _clean_stadium_display, W, H).
 # ---------------------------------------------------------------------------
 
-GLOW_RED = (255, 40, 40, 255)
-CARD_FILL = (70, 6, 8, 200)          # dark translucent red — the card body
-CARD_EDGE = (255, 70, 70, 160)       # sharp inner border
-PILL_FILL = (10, 3, 4, 235)          # near-black time capsule
+# ---------------------------------------------------------------------------
+# استبدل دالة render_kickoff() الكاملة (ودالة _glow_rounded_rect و_time_pill
+# إذا موجودين) بهذا الكود. باقي الملف (render_kickoff_png_bytes) ما يتغيرش.
+# ---------------------------------------------------------------------------
+
+CARD_FILL = (250, 250, 251, 255)      # white card body
+CARD_SHADOW = (0, 0, 0, 90)           # soft drop shadow under the card
+NAME_DARK = (24, 28, 48, 255)         # near-navy team-name text on white
+DATE_RED = (176, 12, 18, 255)
 
 
-def _glow_rounded_rect(base, box, radius, glow_color=GLOW_RED,
-                       fill=None, blur=10, glow_alpha=140):
-    """A rounded rectangle with a soft outer glow — the KICK OFF card/pill look.
-
-    Drawn as three layers: a blurred halo (the glow), the flat body fill,
-    then a crisp 2px edge on top so the border still reads at full size.
-    """
+def _white_card(base, box, radius, blur=10):
+    """A white rounded card with a soft drop shadow — the KICK OFF look."""
     x0, y0, x1, y1 = (int(v) for v in box)
     w, h = x1 - x0, y1 - y0
     if w <= 0 or h <= 0:
         return
     pad = blur * 3
 
-    # Halo: a rounded outline, blurred, sitting behind everything.
-    halo = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    hd = ImageDraw.Draw(halo)
-    hd.rounded_rectangle((pad, pad, pad + w, pad + h), radius=radius,
-                         outline=(*glow_color[:3], glow_alpha), width=6)
-    halo = halo.filter(ImageFilter.GaussianBlur(blur))
-    base.alpha_composite(halo, (x0 - pad, y0 - pad))
+    shadow = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle(
+        (pad, pad + 6, pad + w, pad + h + 6), radius=radius, fill=CARD_SHADOW)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
+    base.alpha_composite(shadow, (x0 - pad, y0 - pad))
 
-    # Body.
-    if fill:
-        body = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        ImageDraw.Draw(body).rounded_rectangle((0, 0, w - 1, h - 1),
-                                               radius=radius, fill=fill)
-        base.alpha_composite(body, (x0, y0))
-
-    # Crisp edge on top.
-    d = ImageDraw.Draw(base)
-    d.rounded_rectangle((x0, y0, x1 - 1, y1 - 1), radius=radius,
-                        outline=CARD_EDGE, width=2)
+    card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(card).rounded_rectangle((0, 0, w - 1, h - 1), radius=radius,
+                                           fill=CARD_FILL)
+    base.alpha_composite(card, (x0, y0))
 
 
-def _time_pill(base, cx, cy, text, h=64):
-    """The glowing black capsule that carries the kick-off time."""
+def _kickoff_time_pill(base, cx, cy, text, h=70):
+    """Glossy red capsule for the kick-off time, flanked by « » chevrons."""
     draw = ImageDraw.Draw(base)
     size = int(h * 0.5)
     tw = _text_w(draw, text, _font(size, "ExtraBold", "time"), rtl=False)
-    w = max(h * 1.7, tw + h * 0.7)
+    w = max(h * 1.9, tw + h * 0.8)
     box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
-    _glow_rounded_rect(base, box, radius=int(h / 2), fill=PILL_FILL,
-                       blur=8, glow_alpha=150)
-    _draw_text(draw, (cx, cy), text, size, "ExtraBold", fill=WHITE,
+    _glossy_bar(base, box, radius=int(h / 2), dark=False)
+    draw = ImageDraw.Draw(base)
+    _draw_text(draw, (cx, cy - h * 0.03), text, size, "ExtraBold", fill=WHITE,
               anchor="mm", rtl=False, role="time")
+    chev = int(h * 0.5)
+    _draw_text(draw, (cx - w / 2 - chev * 0.9, cy), "\u00ab", chev, "Bold",
+              fill=(255, 255, 255, 235), anchor="mm", rtl=False)
+    _draw_text(draw, (cx + w / 2 + chev * 0.9, cy), "\u00bb", chev, "Bold",
+              fill=(255, 255, 255, 235), anchor="mm", rtl=False)
 
 
 def render_kickoff(matchweek, days: list[dict],
                    brand_logo: str | None = None,
                    background: str | None = None,
                    scale: float = 1.0) -> Image.Image:
-    """Render the "KICK OFF" round-preview poster.
-
-    ``days`` follows the same shape fixtures_parser.parse() returns:
-    [{"date_label": "السبت 05 سبتمبر 2026",
-      "matches": [{"home": {...}, "away": {...}, "time": "16:30"}, ...]}, ...]
-    Club names are drawn in Arabic (name_ar), same roster/crests as the other
-    poster types — no separate English labels.
-    """
+    """Render the "KICK OFF" round-preview poster (white-card style)."""
     bg_path = BG_PATH
     if background:
         cand = os.path.join(STATIC, "img", os.path.basename(background))
@@ -943,9 +932,6 @@ def render_kickoff(matchweek, days: list[dict],
               fill=CRYSTAL, anchor="mm", rtl=False, role="time")
     content_top = ty + 70
 
-    # ---- lay out rows: each day = a header line + one card holding its
-    #      matches. Row/day-header heights shrink uniformly to fit the fixed
-    #      canvas when the round has many fixtures. ------------------------
     days = [d for d in days if d.get("matches")]
     n_matches = sum(len(d["matches"]) for d in days)
     n_days = max(1, len(days))
@@ -953,13 +939,13 @@ def render_kickoff(matchweek, days: list[dict],
     avail = region_bot - region_top
 
     day_hdr_h = 70
-    card_gap = 26      # space between day cards
-    row_gap = 4        # divider gap between rows inside a card
-    card_pad = 14      # inner top/bottom padding of a card
+    card_gap = 26
+    row_gap = 2
+    card_pad = 6
 
     def _total_h(row_h):
         return (n_days * day_hdr_h + n_matches * row_h
-                + (n_matches - n_days) * row_gap  # dividers, not after last row
+                + (n_matches - n_days) * row_gap
                 + n_days * card_pad * 2 + (n_days - 1) * card_gap)
 
     row_h = 150.0
@@ -968,12 +954,11 @@ def render_kickoff(matchweek, days: list[dict],
     day_hdr_h = min(day_hdr_h, max(44, day_hdr_h * (row_h / 150.0)))
 
     y = region_top + max(0, (avail - _total_h(row_h)) / 2)
-    crest = row_h * 0.86
+    crest = row_h * 0.82
     name_size = int(min(34, row_h * 0.20))
-    time_h = min(64, row_h * 0.42)
+    time_h = min(70, row_h * 0.44)
 
     for day in days:
-        # Date header, flanked by hairlines.
         _draw_text(draw, (W / 2, y + day_hdr_h / 2), day.get("date_label", ""),
                   int(min(44, day_hdr_h * 0.6)), "Bold", fill=WHITE,
                   anchor="mm")
@@ -989,16 +974,15 @@ def render_kickoff(matchweek, days: list[dict],
         card_h = (len(matches) * row_h + (len(matches) - 1) * row_gap
                  + card_pad * 2)
         card_box = (140, y, W - 140, y + card_h)
-        _glow_rounded_rect(base, card_box, radius=int(row_h * 0.22),
-                           fill=CARD_FILL, blur=9, glow_alpha=110)
+        _white_card(base, card_box, radius=int(row_h * 0.22))
         draw = ImageDraw.Draw(base)
 
         ry = y + card_pad
         for i, m in enumerate(matches):
             mid = ry + row_h / 2
             home, away = m.get("home", {}), m.get("away", {})
-            home_cx = (W - 280) * 0.78 + 140
-            away_cx = (W - 280) * 0.22 + 140
+            home_cx = (W - 280) * 0.80 + 140
+            away_cx = (W - 280) * 0.20 + 140
             time_cx = W / 2
 
             _paste_contained(base, _logo_path(home.get("logo"),
@@ -1014,22 +998,23 @@ def render_kickoff(matchweek, days: list[dict],
                 name = (team.get("name_ar") or "").strip()
                 if not name:
                     continue
-                gap = crest / 2 + 24
+                gap = crest / 2 + 22
                 tx = cx - gap if anchor == "right" else cx + gap
                 a = "rm" if anchor == "right" else "lm"
-                nsize = _fit_font(draw, name, 340, name_size, "Bold",
+                nsize = _fit_font(draw, name, 320, name_size, "Bold",
                                   min_size=18)
                 _draw_text(draw, (tx, mid), name, nsize, "Bold",
-                          fill=WHITE, anchor=a)
+                          fill=NAME_DARK, anchor=a)
 
-            _time_pill(base, time_cx, mid, m.get("time", "16:30"), h=time_h)
+            _kickoff_time_pill(base, time_cx, mid, m.get("time", "16:30"),
+                               h=time_h)
             draw = ImageDraw.Draw(base)
 
             ry += row_h
             if i < len(matches) - 1:
                 dl = ImageDraw.Draw(base)
-                dl.line([(180, ry + row_gap / 2), (W - 180, ry + row_gap / 2)],
-                       fill=(255, 255, 255, 30), width=2)
+                dl.line([(200, ry + row_gap / 2), (W - 200, ry + row_gap / 2)],
+                       fill=(0, 0, 0, 30), width=2)
                 ry += row_gap
 
         y += card_h + card_gap
@@ -1037,10 +1022,3 @@ def render_kickoff(matchweek, days: list[dict],
     if scale != 1.0:
         base = base.resize((int(W * scale), int(H * scale)), Image.LANCZOS)
     return base.convert("RGB")
-
-
-def render_kickoff_png_bytes(*args, **kwargs) -> bytes:
-    img = render_kickoff(*args, **kwargs)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
