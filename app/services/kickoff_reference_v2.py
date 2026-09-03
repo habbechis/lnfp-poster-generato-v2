@@ -1,1 +1,0 @@
-from .kickoff_reference import render_kickoff
