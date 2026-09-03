@@ -78,6 +78,7 @@ TIME_FONT_PATH = _resolve_font(_TIME_FONT_CANDIDATES,
                                "POSTER_FONT_TIME", "POSTER_FONT")
 FONT_PATH = TEXT_FONT_PATH
 BG_PATH = os.path.join(STATIC, "img", "bg-vide.png")
+KICKOFF_BG_PATH = os.path.join(STATIC, "img", "bg-kickoff.png")
 LNFP_PATH = os.path.join(STATIC, "img", "logo-lnfp.png")
 LIGUE1_PATH = os.path.join(STATIC, "img", "logo-ligue1.png")
 LOGOS_DIR = os.path.join(STATIC, "logos")
@@ -701,28 +702,34 @@ def render_standings(title: str, subtitle: str, rows: Iterable[dict],
 # KICK OFF poster — round preview, white-card style
 # --------------------------------------------------------------------------- #
 CARD_FILL = (250, 250, 251, 255)
-CARD_SHADOW = (0, 0, 0, 90)
+CARD_GLOW = (200, 20, 24, 100)
 NAME_DARK = (24, 28, 48, 255)
 DATE_RED = (176, 12, 18, 255)
 
 
-def _white_card(base, box, radius, blur=10):
+def _white_card(base, box, radius, blur=14):
+    """A white card with a thin red border and a soft red glow — matches the
+    reference KICK OFF poster (red-tinted halo bleeding onto the red page)."""
     x0, y0, x1, y1 = (int(v) for v in box)
     w, h = x1 - x0, y1 - y0
     if w <= 0 or h <= 0:
         return
     pad = blur * 3
 
-    shadow = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).rounded_rectangle(
-        (pad, pad + 6, pad + w, pad + h + 6), radius=radius, fill=CARD_SHADOW)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
-    base.alpha_composite(shadow, (x0 - pad, y0 - pad))
+    glow = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).rounded_rectangle(
+        (pad, pad, pad + w, pad + h), radius=radius, fill=CARD_GLOW)
+    glow = glow.filter(ImageFilter.GaussianBlur(blur))
+    base.alpha_composite(glow, (x0 - pad, y0 - pad))
 
     card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     ImageDraw.Draw(card).rounded_rectangle((0, 0, w - 1, h - 1), radius=radius,
                                            fill=CARD_FILL)
     base.alpha_composite(card, (x0, y0))
+
+    d = ImageDraw.Draw(base)
+    d.rounded_rectangle((x0, y0, x1 - 1, y1 - 1), radius=radius,
+                        outline=DATE_RED, width=4)
 
 
 def _kickoff_time_pill(base, cx, cy, text, h=70):
@@ -742,11 +749,22 @@ def _kickoff_time_pill(base, cx, cy, text, h=70):
               fill=(255, 255, 255, 235), anchor="mm", rtl=False)
 
 
+
+def _flank_lines(base, cx, cy, text_half_w, color, ext=90, gap=26, width=3):
+    """Two short rules flanking centred text — the reference's separator style."""
+    d = ImageDraw.Draw(base)
+    l0 = cx - text_half_w - gap
+    l1 = l0 - ext
+    r0 = cx + text_half_w + gap
+    r1 = r0 + ext
+    d.line([(l1, cy), (l0, cy)], fill=color, width=width)
+    d.line([(r0, cy), (r1, cy)], fill=color, width=width)
+
 def render_kickoff(matchweek, days: list[dict],
                    brand_logo: str | None = None,
                    background: str | None = None,
                    scale: float = 1.0) -> Image.Image:
-    bg_path = BG_PATH
+    bg_path = KICKOFF_BG_PATH if os.path.exists(KICKOFF_BG_PATH) else BG_PATH
     if background:
         cand = os.path.join(STATIC, "img", os.path.basename(background))
         if os.path.exists(cand):
@@ -768,6 +786,10 @@ def render_kickoff(matchweek, days: list[dict],
         else f"MATCHWEEK {matchweek}"
     _draw_text(draw, (W / 2, ty), label, 62, "Bold",
               fill=CRYSTAL, anchor="mm", rtl=False, role="time")
+    mw_half_w = _text_w(draw, label, _font(62, "Bold", "time"), rtl=False) / 2
+    _flank_lines(base, W / 2, ty, mw_half_w, CRYSTAL_EDGE, ext=70, gap=24,
+                width=3)
+    draw = ImageDraw.Draw(base)
     content_top = ty + 70
 
     days = [d for d in days if d.get("matches")]
@@ -797,15 +819,15 @@ def render_kickoff(matchweek, days: list[dict],
     time_h = min(70, row_h * 0.44)
 
     for day in days:
-        _draw_text(draw, (W / 2, y + day_hdr_h / 2), day.get("date_label", ""),
-                  int(min(44, day_hdr_h * 0.6)), "Bold", fill=WHITE,
-                  anchor="mm")
-        line_w, line_y = 260, y + day_hdr_h / 2
-        d = ImageDraw.Draw(base)
-        d.line([(140, line_y), (W / 2 - line_w, line_y)],
-              fill=CRYSTAL_EDGE, width=2)
-        d.line([(W / 2 + line_w, line_y), (W - 140, line_y)],
-              fill=CRYSTAL_EDGE, width=2)
+        dsize = int(min(44, day_hdr_h * 0.6))
+        date_label = day.get("date_label", "")
+        line_y = y + day_hdr_h / 2
+        _draw_text(draw, (W / 2, line_y), date_label, dsize, "Bold",
+                  fill=DATE_RED, anchor="mm")
+        half_w = _text_w(draw, date_label, _font(dsize, "Bold")) / 2
+        _flank_lines(base, W / 2, line_y, half_w, DATE_RED, ext=110, gap=30,
+                    width=3)
+        draw = ImageDraw.Draw(base)
         y += day_hdr_h
 
         matches = day["matches"]
