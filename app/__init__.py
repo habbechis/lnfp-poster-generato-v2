@@ -29,6 +29,11 @@ def create_app(config_object: type = Config) -> Flask:
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(admin_bp)
 
+    # The KICK OFF data/API stays unchanged; only its server-side visual
+    # renderer is swapped for the reference-driven implementation.
+    from .services import kickoff_reference, poster
+    poster.render_kickoff = kickoff_reference.render_kickoff
+
     @app.get("/healthz")
     def healthz():
         return {"status": "ok", "store": app.store.status()}
