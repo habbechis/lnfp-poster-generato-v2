@@ -1,9 +1,4 @@
-"""4:5 reference-model KICK OFF renderer.
-
-The data/API remain unchanged. This module recreates the supplied visual model
-as a deterministic 2000x2500 composition, with translucent glass match cards,
-red date tabs, large beveled kickoff plates, and the supplied background.
-"""
+"""4:5 reference-model KICK OFF renderer."""
 from __future__ import annotations
 
 import base64
@@ -16,14 +11,47 @@ W, H = 2000, 2500
 WHITE = (255, 255, 255, 255)
 TEXT = (32, 22, 24, 255)
 RED = (184, 10, 18, 255)
-RED2 = (220, 22, 28, 255)
 BG_B64 = os.path.join(p.STATIC, "img", "bg-kickoff-reference.b64")
 
 
-def _bg():
-    with open(BG_B64, "r", encoding="utf-8") as f:
-        im = Image.open(io.BytesIO(base64.b64decode(f.read().strip()))).convert("RGBA")
+def _load_image(path):
+    im = Image.open(path).convert("RGBA")
     return im.resize((W, H), Image.LANCZOS) if im.size != (W, H) else im
+
+
+def _bg(background=None):
+    """Load a real image background first; never let a broken optional asset
+    prevent the KICK OFF preview from rendering.
+
+    The repository's existing bg-kickoff.png is the authoritative fallback.
+    The .b64 asset is only used when it decodes to a valid Pillow image.
+    """
+    candidates = []
+    if background:
+        candidate = os.path.join(p.STATIC, "img", os.path.basename(background))
+        if os.path.exists(candidate):
+            candidates.append(candidate)
+    if os.path.exists(p.KICKOFF_BG_PATH):
+        candidates.append(p.KICKOFF_BG_PATH)
+    if os.path.exists(p.BG_PATH):
+        candidates.append(p.BG_PATH)
+
+    for path in candidates:
+        try:
+            return _load_image(path)
+        except Exception:
+            continue
+
+    # Last resort: decode the reference text asset, but validate it before use.
+    try:
+        with open(BG_B64, "r", encoding="utf-8") as f:
+            raw = base64.b64decode(f.read().strip(), validate=True)
+        with Image.open(io.BytesIO(raw)) as src:
+            src.load()
+            return src.convert("RGBA").resize((W, H), Image.LANCZOS)
+    except Exception:
+        # A flat red fallback is preferable to a failed preview endpoint.
+        return Image.new("RGBA", (W, H), (88, 0, 8, 255))
 
 
 def _glass_card(im, box):
@@ -34,7 +62,6 @@ def _glass_card(im, box):
     gd.rounded_rectangle((x0, y0, x1, y1), radius=42, fill=(255, 255, 255, 48), outline=(255, 255, 255, 120), width=7)
     glow = glow.filter(ImageFilter.GaussianBlur(18))
     im.alpha_composite(glow)
-    # translucent white glass, not opaque white
     d.rounded_rectangle((x0, y0, x1, y1), radius=42, fill=(250, 250, 250, 226), outline=(255, 255, 255, 225), width=6)
     d.rounded_rectangle((x0 + 9, y0 + 9, x1 - 9, y1 - 9), radius=34, fill=(255, 255, 255, 38), outline=(196, 24, 30, 120), width=3)
 
@@ -47,7 +74,6 @@ def _date_tab(im, text, cy, width=650, height=86):
     pts = [(x0 + 32, y0), (x0 + 76, y0), (x0 + 100, y0 - 20), (x1 - 100, y0 - 20), (x1 - 76, y0), (x1 - 32, y0), (x1, y0 + 17), (x1, y1 - 17), (x1 - 32, y1), (x0 + 32, y1), (x0, y1 - 17), (x0, y0 + 17)]
     d.polygon(pts, fill=RED)
     d.line(pts + [pts[0]], fill=(255, 255, 255, 170), width=3)
-    # calendar glyph
     gx, gy, s = x0 + 58, int(cy), 27
     d.rounded_rectangle((gx - s, gy - s + 2, gx + s, gy + s), radius=5, outline=WHITE, width=5)
     d.line((gx - s, gy - 5, gx + s, gy - 5), fill=WHITE, width=4)
@@ -82,9 +108,13 @@ def _row(im, match, y0, y1):
     rh = y1 - y0
     logo = int(max(125, min(175, rh * .72)))
     home, away = match.get("home") or {}, match.get("away") or {}
-    # right = home, left = away, matching RTL composition
-    p._paste_contained(im, p._logo_path(home.get("logo"), home.get("logo_dir", "logos")), 1700, cy, logo, logo)
-    p._paste_contained(im, p._logo_path(away.get("logo"), away.get("logo_dir", "logos")), 300, cy, logo, logo)
+    for side, x in ((home, 1700), (away, 300)):
+        try:
+            path = p._logo_path(side.get("logo"), side.get("logo_dir", "logos"))
+            p._paste_contained(im, path, x, cy, logo, logo)
+        except Exception:
+            # Missing crest must not abort the complete poster preview.
+            pass
     name_fs = int(max(34, min(50, rh * .25)))
     hn, an = (home.get("name_ar") or "").strip(), (away.get("name_ar") or "").strip()
     if hn:
@@ -93,7 +123,6 @@ def _row(im, match, y0, y1):
     if an:
         fs = p._fit_font(d, an, 500, name_fs, "Bold", min_size=28, rtl=True)
         p._draw_text(d, (465, cy), an, fs, "Bold", fill=TEXT, anchor="lm", rtl=True)
-    # subtle chevrons beside the time plate
     chev = max(20, int(rh * .11))
     p._draw_text(d, (850, cy), "«", chev, "Bold", fill=RED, anchor="mm", rtl=False)
     p._draw_text(d, (1150, cy), "»", chev, "Bold", fill=RED, anchor="mm", rtl=False)
@@ -111,16 +140,17 @@ def _day(im, day, y, card_h, row_h):
     for i, m in enumerate(matches):
         a, b = top + i * actual, top + (i + 1) * actual
         if i:
-            d = ImageDraw.Draw(im)
-            d.line((x0 + 48, a, x1 - 48, a), fill=(175, 25, 30, 65), width=2)
+            ImageDraw.Draw(im).line((x0 + 48, a, x1 - 48, a), fill=(175, 25, 30, 65), width=2)
         _row(im, m, a, b)
 
 
 def render_kickoff(matchweek, days: list[dict], brand_logo=None, background=None, scale=1.0):
-    im = _bg()
+    im = _bg(background)
     d = ImageDraw.Draw(im)
-    # Fixed 4:5 header geometry from the supplied model.
-    p._paste_brand_logo(im, W / 2, 170, 215, 215, spec=brand_logo)
+    try:
+        p._paste_brand_logo(im, W / 2, 170, 215, 215, spec=brand_logo)
+    except Exception:
+        pass
     p._draw_text(d, (W / 2, 365), "KICK OFF", 158, "ExtraBold", fill=WHITE, anchor="mm", rtl=False, role="time")
     label = f"MATCHWEEK #{int(matchweek):02d}" if str(matchweek).isdigit() else f"MATCHWEEK {matchweek}"
     p._draw_text(d, (W / 2, 480), label, 66, "Bold", fill=WHITE, anchor="mm", rtl=False, role="time")
