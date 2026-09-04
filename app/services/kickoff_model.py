@@ -1,262 +1,133 @@
 """Premium 4:5 KICK OFF poster renderer with clean neon geometry."""
 from __future__ import annotations
-
-import base64
-import io
-import os
+import base64, io, os
 from PIL import Image, ImageDraw, ImageFilter
 from . import poster as p
 from .kickoff_team_names import short_name
-
-W, H = 2000, 2500
-WHITE = (255, 255, 255, 255)
-TEXT = (28, 20, 22, 255)
-RED = (190, 8, 18, 255)
-NEON = (255, 36, 48, 255)
-BG_B64 = os.path.join(p.STATIC, "img", "bg-kickoff-reference.b64")
-
+W,H=2000,2500
+WHITE=(255,255,255,255); TEXT=(28,20,22,255); RED=(190,8,18,255); NEON=(255,36,48,255)
+BG_B64=os.path.join(p.STATIC,"img","bg-kickoff-reference.b64")
 
 def _load_image(path):
-    im = Image.open(path).convert("RGBA")
-    return im.resize((W, H), Image.LANCZOS) if im.size != (W, H) else im
-
+    im=Image.open(path).convert("RGBA")
+    return im.resize((W,H),Image.LANCZOS) if im.size!=(W,H) else im
 
 def _load_reference_b64():
-    with open(BG_B64, "r", encoding="utf-8") as f:
-        raw = base64.b64decode(f.read().strip(), validate=True)
+    with open(BG_B64,"r",encoding="utf-8") as f: raw=base64.b64decode(f.read().strip(),validate=True)
     with Image.open(io.BytesIO(raw)) as src:
-        src.load()
-        return src.convert("RGBA").resize((W, H), Image.LANCZOS)
-
+        src.load(); return src.convert("RGBA").resize((W,H),Image.LANCZOS)
 
 def _bg(background=None):
     if background:
-        candidate = os.path.join(p.STATIC, "img", os.path.basename(background))
-        if os.path.exists(candidate) and os.path.basename(candidate) != "bg-kickoff.png":
-            try:
-                return _load_image(candidate)
-            except Exception:
-                pass
-    try:
-        return _load_reference_b64()
-    except Exception:
-        pass
-    for path in (p.KICKOFF_BG_PATH, p.BG_PATH):
+        candidate=os.path.join(p.STATIC,"img",os.path.basename(background))
+        if os.path.exists(candidate) and os.path.basename(candidate)!="bg-kickoff.png":
+            try:return _load_image(candidate)
+            except Exception:pass
+    try:return _load_reference_b64()
+    except Exception:pass
+    for path in (p.KICKOFF_BG_PATH,p.BG_PATH):
         if os.path.exists(path):
-            try:
-                return _load_image(path)
-            except Exception:
-                pass
-    return Image.new("RGBA", (W, H), (82, 0, 8, 255))
+            try:return _load_image(path)
+            except Exception:pass
+    return Image.new("RGBA",(W,H),(82,0,8,255))
 
+def _composite_local_glow(im,draw_fn,bounds,blur=8,pad=24):
+    x0,y0,x1,y1=map(int,bounds); pad=max(int(pad),int(blur*3)+4)
+    cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
+    local=Image.new("RGBA",(cx1-cx0,cy1-cy0),(0,0,0,0)); draw_fn(ImageDraw.Draw(local),cx0,cy0)
+    im.alpha_composite(local.filter(ImageFilter.GaussianBlur(blur)),(cx0,cy0))
 
-def _composite_local_glow(im, draw_fn, bounds, blur=8, pad=24):
-    x0, y0, x1, y1 = map(int, bounds)
-    pad = max(int(pad), int(blur * 3) + 4)
-    cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
-    cx1, cy1 = min(im.width, x1 + pad + 1), min(im.height, y1 + pad + 1)
-    local = Image.new("RGBA", (cx1 - cx0, cy1 - cy0), (0, 0, 0, 0))
-    draw_fn(ImageDraw.Draw(local), cx0, cy0)
-    im.alpha_composite(local.filter(ImageFilter.GaussianBlur(blur)), (cx0, cy0))
+def _frosted_polygon(im,points,bounds,tint=(255,255,255,72),blur=7):
+    x0,y0,x1,y1=map(int,bounds); pad=max(10,int(blur*3))
+    cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
+    crop=im.crop((cx0,cy0,cx1,cy1)).filter(ImageFilter.GaussianBlur(blur))
+    mask=Image.new("L",crop.size,0); shifted=[(int(x-cx0),int(y-cy0)) for x,y in points]
+    ImageDraw.Draw(mask).polygon(shifted,fill=255)
+    glass=Image.new("RGBA",crop.size,tint); glass.putalpha(mask)
+    im.alpha_composite(Image.alpha_composite(crop,glass),(cx0,cy0))
 
+def _glass_sheen(im,points,bounds):
+    x0,y0,x1,y1=map(int,bounds); pad=16
+    cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
+    size=(cx1-cx0,cy1-cy0); mask=Image.new("L",size,0)
+    local_pts=[(int(x-cx0),int(y-cy0)) for x,y in points]; ImageDraw.Draw(mask).polygon(local_pts,fill=255)
+    sheen=Image.new("RGBA",size,(0,0,0,0)); sd=ImageDraw.Draw(sheen); w,h=size
+    sd.polygon([(-int(.12*w),int(.02*h)),(int(.04*w),int(.02*h)),(int(1.02*w),int(.82*h)),(int(.98*w),int(.98*h))],fill=(255,255,255,32))
+    sd.polygon([(-int(.08*w),int(.08*h)),(-int(.03*w),int(.08*h)),(int(.93*w),int(.86*h)),(int(.88*w),int(.86*h))],fill=(255,255,255,125))
+    sd.rounded_rectangle((int(.08*w),int(.08*h),int(.72*w),int(.20*h)),radius=max(6,int(.05*h)),fill=(255,255,255,58))
+    sheen.putalpha(Image.composite(sheen.getchannel("A"),Image.new("L",size,0),mask))
+    im.alpha_composite(sheen.filter(ImageFilter.GaussianBlur(1.8)),(cx0,cy0))
 
-def _frosted_polygon(im, points, bounds, tint=(255, 255, 255, 72), blur=7):
-    """Locally blur and tint a polygon so the background remains visible through glass."""
-    x0, y0, x1, y1 = map(int, bounds)
-    pad = max(10, int(blur * 3))
-    cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
-    cx1, cy1 = min(im.width, x1 + pad + 1), min(im.height, y1 + pad + 1)
-    crop = im.crop((cx0, cy0, cx1, cy1)).filter(ImageFilter.GaussianBlur(blur))
-    mask = Image.new("L", crop.size, 0)
-    shifted = [(int(x - cx0), int(y - cy0)) for x, y in points]
-    ImageDraw.Draw(mask).polygon(shifted, fill=255)
-    glass = Image.new("RGBA", crop.size, tint)
-    glass.putalpha(mask)
-    im.alpha_composite(Image.alpha_composite(crop, glass), (cx0, cy0))
+def _neon_outline(im,box,radius=38,glow_alpha=55,blur=8,width=3):
+    x0,y0,x1,y1=map(int,box)
+    def glow_line(gd,ox,oy):gd.rounded_rectangle((x0-ox,y0-oy,x1-ox,y1-oy),radius=radius,outline=(255,28,42,glow_alpha),width=width+4)
+    _composite_local_glow(im,glow_line,(x0,y0,x1,y1),blur=blur,pad=28); d=ImageDraw.Draw(im)
+    d.rounded_rectangle((x0,y0,x1,y1),radius=radius,outline=(255,255,255,238),width=width)
+    d.rounded_rectangle((x0+7,y0+7,x1-7,y1-7),radius=max(8,radius-7),outline=(NEON[0],NEON[1],NEON[2],180),width=2)
 
+def _glass_card(im,box):
+    x0,y0,x1,y1=map(int,box); d=ImageDraw.Draw(im)
+    d.rounded_rectangle((x0,y0,x1,y1),radius=40,fill=(248,247,247,232)); _neon_outline(im,box,radius=40,glow_alpha=58,blur=8,width=4)
+    d.rounded_rectangle((x0+11,y0+11,x1-11,y1-11),radius=31,outline=(255,255,255,115),width=2)
 
-def _glass_sheen(im, points, bounds, direction="down"):
-    """Add a visible premium glass reflection clipped to the shape."""
-    x0, y0, x1, y1 = map(int, bounds)
-    pad = 16
-    cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
-    cx1, cy1 = min(im.width, x1 + pad + 1), min(im.height, y1 + pad + 1)
-    size = (cx1 - cx0, cy1 - cy0)
-    mask = Image.new("L", size, 0)
-    local_pts = [(int(x - cx0), int(y - cy0)) for x, y in points]
-    ImageDraw.Draw(mask).polygon(local_pts, fill=255)
+def _date_tab(im,text,cy,width=650,height=82):
+    cx=W//2; x0,x1=int(cx-width/2),int(cx+width/2); y0,y1=int(cy-height/2),int(cy+height/2)
+    pts=[(x0+34,y0),(x0+80,y0),(x0+102,y0-17),(x1-102,y0-17),(x1-80,y0),(x1-34,y0),(x1,y0+16),(x1,y1-16),(x1-34,y1),(x0+34,y1),(x0,y1-16),(x0,y0+16)]
+    def glow_line(gd,ox,oy):
+        shifted=[(x-ox,y-oy) for x,y in pts]; gd.line(shifted+[shifted[0]],fill=(255,30,42,65),width=8,joint="curve")
+    bounds=(min(x for x,_ in pts),min(y for _,y in pts),max(x for x,_ in pts),max(y for _,y in pts))
+    _composite_local_glow(im,glow_line,bounds,blur=7,pad=24); _frosted_polygon(im,pts,bounds,tint=(255,255,255,70),blur=7)
+    d=ImageDraw.Draw(im); d.polygon(pts,fill=(150,5,16,88)); d.line(pts+[pts[0]],fill=(255,255,255,242),width=3,joint="curve"); _glass_sheen(im,pts,bounds); d=ImageDraw.Draw(im)
+    d.line((x0+38,y0+5,x1-38,y0+5),fill=(255,255,255,180),width=2); d.line((x0+44,y1-5,x1-44,y1-5),fill=(255,36,48,125),width=2)
+    gx,gy,s=x0+52,int(cy),24; d.rounded_rectangle((gx-s,gy-s+2,gx+s,gy+s),radius=6,outline=WHITE,width=5); d.line((gx-s,gy-5,gx+s,gy-5),fill=WHITE,width=4); d.line((gx-12,gy-s-3,gx-12,gy-12),fill=WHITE,width=5); d.line((gx+12,gy-s-3,gx+12,gy-12),fill=WHITE,width=5)
+    fs=p._fit_font(d,text,width-118,46,"Bold",min_size=28,rtl=True); p._draw_text(d,(cx+24,cy),text,fs,"Bold",fill=WHITE,anchor="mm",rtl=True)
 
-    sheen = Image.new("RGBA", size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(sheen)
-    w, h = size
-    # Broad diagonal reflection band.
-    band = [(int(-0.12 * w), int(0.02 * h)),
-            (int(0.04 * w), int(0.02 * h)),
-            (int(1.02 * w), int(0.82 * h)),
-            (int(0.98 * w), int(0.98 * h))]
-    sd.polygon(band, fill=(255, 255, 255, 28))
-    # Thin specular streak makes the glass visibly catch light.
-    streak = [(int(-0.08 * w), int(0.08 * h)),
-              (int(-0.03 * w), int(0.08 * h)),
-              (int(0.93 * w), int(0.86 * h)),
-              (int(0.88 * w), int(0.86 * h))]
-    sd.polygon(streak, fill=(255, 255, 255, 105))
-    # Soft highlight near the upper edge.
-    sd.rounded_rectangle((int(0.08 * w), int(0.08 * h), int(0.72 * w), int(0.20 * h)),
-                         radius=max(6, int(0.05 * h)), fill=(255, 255, 255, 48))
-    sheen.putalpha(Image.composite(sheen.getchannel("A"), Image.new("L", size, 0), mask))
-    sheen = sheen.filter(ImageFilter.GaussianBlur(2.2))
-    im.alpha_composite(sheen, (cx0, cy0))
+def _time(im,text,cy,h=112):
+    w,sl=320,28; cx=W//2; x0,x1=cx-w//2,cx+w//2; y0,y1=int(cy-h/2),int(cy+h/2)
+    poly=[(x0+sl,y0),(x1-sl,y0),(x1,cy),(x1-sl,y1),(x0+sl,y1),(x0,cy)]
+    def glow_line(gd,ox,oy):
+        shifted=[(x-ox,y-oy) for x,y in poly]; gd.line(shifted+[shifted[0]],fill=(255,28,40,70),width=6,joint="curve")
+    _composite_local_glow(im,glow_line,(x0,y0,x1,y1),blur=6,pad=22); _frosted_polygon(im,poly,(x0,y0,x1,y1),tint=(255,255,255,76),blur=7)
+    d=ImageDraw.Draw(im); d.polygon(poly,fill=(170,5,17,105)); d.line(poly+[poly[0]],fill=(255,255,255,247),width=4,joint="curve"); _glass_sheen(im,poly,(x0,y0,x1,y1)); d=ImageDraw.Draw(im)
+    d.line((x0+sl+14,y0+8,x1-sl-14,y0+8),fill=(255,255,255,205),width=2); d.line((x0+18,cy,x0+42,cy),fill=(255,255,255,125),width=2); d.line((x1-42,cy,x1-18,cy),fill=(255,255,255,125),width=2)
+    fs=p._fit_font(d,text,w-32,78,"ExtraBold",min_size=44,rtl=False,role="time"); p._draw_text(d,(cx,cy-1),text,fs,"ExtraBold",fill=WHITE,anchor="mm",rtl=False,role="time")
 
+def _draw_team_name(d,name,center_x,cy,max_width,size):
+    name=short_name(name)
+    if not name:return
+    fs=p._fit_font(d,name,max_width,size,"Bold",min_size=30,rtl=True); p._draw_text(d,(center_x,cy),name,fs,"Bold",fill=TEXT,anchor="mm",rtl=True)
 
-def _neon_outline(im, box, radius=38, glow_alpha=55, blur=8, width=3):
-    x0, y0, x1, y1 = map(int, box)
-    def glow_line(gd, ox, oy):
-        gd.rounded_rectangle((x0 - ox, y0 - oy, x1 - ox, y1 - oy), radius=radius,
-                             outline=(255, 28, 42, glow_alpha), width=width + 4)
-    _composite_local_glow(im, glow_line, (x0, y0, x1, y1), blur=blur, pad=28)
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle((x0, y0, x1, y1), radius=radius,
-                        outline=(255, 255, 255, 238), width=width)
-    d.rounded_rectangle((x0 + 7, y0 + 7, x1 - 7, y1 - 7),
-                        radius=max(8, radius - 7), outline=(NEON[0], NEON[1], NEON[2], 180), width=2)
+def _row(im,match,y0,y1):
+    d=ImageDraw.Draw(im); cy=(y0+y1)/2; rh=y1-y0; home,away=match.get("home") or {},match.get("away") or {}; logo=int(max(128,min(172,rh*.78)))
+    for side,x in ((home,1690),(away,310)):
+        try:path=p._logo_path(side.get("logo"),side.get("logo_dir","logos")); p._paste_contained(im,path,x,cy,logo,logo)
+        except Exception:pass
+    _draw_team_name(d,home.get("name_ar") or "",1410,cy,340,int(max(38,min(52,rh*.27)))); _draw_team_name(d,away.get("name_ar") or "",590,cy,340,int(max(38,min(52,rh*.27))))
+    _time(im,(match.get("time") or "16:30").strip(),cy,int(min(112,max(98,rh*.58))))
 
+def _day(im,day,y,card_h,row_h):
+    x0,x1=120,1880; card_y0,card_y1=int(y+34),int(y+card_h); _glass_card(im,(x0,card_y0,x1,card_y1)); _date_tab(im,(day.get("date_label") or "").strip(),y+34)
+    matches=day.get("matches") or []; top,bottom=card_y0+32,card_y1-18; actual=(bottom-top)/max(1,len(matches))
+    for i,m in enumerate(matches):
+        a,b=top+i*actual,top+(i+1)*actual
+        if i:ImageDraw.Draw(im).line((x0+48,a,x1-48,a),fill=(185,35,42,72),width=2)
+        _row(im,m,a,b)
 
-def _glass_card(im, box):
-    x0, y0, x1, y1 = map(int, box)
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle((x0, y0, x1, y1), radius=40, fill=(248, 247, 247, 232))
-    _neon_outline(im, box, radius=40, glow_alpha=58, blur=8, width=4)
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle((x0 + 11, y0 + 11, x1 - 11, y1 - 11), radius=31,
-                        outline=(255, 255, 255, 115), width=2)
-
-
-def _date_tab(im, text, cy, width=650, height=82):
-    cx = W // 2
-    x0, x1 = int(cx - width / 2), int(cx + width / 2)
-    y0, y1 = int(cy - height / 2), int(cy + height / 2)
-    pts = [(x0 + 34, y0), (x0 + 80, y0), (x0 + 102, y0 - 17),
-           (x1 - 102, y0 - 17), (x1 - 80, y0), (x1 - 34, y0),
-           (x1, y0 + 16), (x1, y1 - 16), (x1 - 34, y1),
-           (x0 + 34, y1), (x0, y1 - 16), (x0, y0 + 16)]
-    def glow_line(gd, ox, oy):
-        shifted = [(x - ox, y - oy) for x, y in pts]
-        gd.line(shifted + [shifted[0]], fill=(255, 30, 42, 65), width=8, joint="curve")
-    bounds = (min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts))
-    _composite_local_glow(im, glow_line, bounds, blur=7, pad=24)
-    _frosted_polygon(im, pts, bounds, tint=(255, 255, 255, 70), blur=7)
-    d = ImageDraw.Draw(im)
-    d.polygon(pts, fill=(150, 5, 16, 88))
-    d.line(pts + [pts[0]], fill=(255, 255, 255, 242), width=3, joint="curve")
-    _glass_sheen(im, pts, bounds)
-    d = ImageDraw.Draw(im)
-    d.line((x0 + 38, y0 + 5, x1 - 38, y0 + 5), fill=(255, 255, 255, 180), width=2)
-    d.line((x0 + 44, y1 - 5, x1 - 44, y1 - 5), fill=(255, 36, 48, 125), width=2)
-    gx, gy, s = x0 + 52, int(cy), 24
-    d.rounded_rectangle((gx - s, gy - s + 2, gx + s, gy + s), radius=6, outline=WHITE, width=5)
-    d.line((gx - s, gy - 5, gx + s, gy - 5), fill=WHITE, width=4)
-    d.line((gx - 12, gy - s - 3, gx - 12, gy - 12), fill=WHITE, width=5)
-    d.line((gx + 12, gy - s - 3, gx + 12, gy - 12), fill=WHITE, width=5)
-    fs = p._fit_font(d, text, width - 118, 46, "Bold", min_size=28, rtl=True)
-    p._draw_text(d, (cx + 24, cy), text, fs, "Bold", fill=WHITE, anchor="mm", rtl=True)
-
-
-def _time(im, text, cy, h=112):
-    w, sl = 320, 28
-    cx = W // 2
-    x0, x1 = cx - w // 2, cx + w // 2
-    y0, y1 = int(cy - h / 2), int(cy + h / 2)
-    poly = [(x0 + sl, y0), (x1 - sl, y0), (x1, cy), (x1 - sl, y1), (x0 + sl, y1), (x0, cy)]
-    def glow_line(gd, ox, oy):
-        shifted = [(x - ox, y - oy) for x, y in poly]
-        gd.line(shifted + [shifted[0]], fill=(255, 28, 40, 70), width=6, joint="curve")
-    bounds = (x0, y0, x1, y1)
-    _composite_local_glow(im, glow_line, bounds, blur=6, pad=22)
-    _frosted_polygon(im, poly, bounds, tint=(255, 255, 255, 76), blur=7)
-    d = ImageDraw.Draw(im)
-    d.polygon(poly, fill=(170, 5, 17, 105))
-    d.line(poly + [poly[0]], fill=(255, 255, 255, 247), width=4, joint="curve")
-    _glass_sheen(im, poly, bounds)
-    d = ImageDraw.Draw(im)
-    d.line((x0 + sl + 14, y0 + 8, x1 - sl - 14, y0 + 8), fill=(255, 255, 255, 205), width=2)
-    d.line((x0 + 18, cy, x0 + 42, cy), fill=(255, 255, 255, 125), width=2)
-    d.line((x1 - 42, cy, x1 - 18, cy), fill=(255, 255, 255, 125), width=2)
-    fs = p._fit_font(d, text, w - 32, 78, "ExtraBold", min_size=44, rtl=False, role="time")
-    p._draw_text(d, (cx, cy - 1), text, fs, "ExtraBold", fill=WHITE, anchor="mm", rtl=False, role="time")
-
-
-def _draw_team_name(d, name, center_x, cy, max_width, size):
-    name = short_name(name)
-    if not name:
-        return
-    fs = p._fit_font(d, name, max_width, size, "Bold", min_size=30, rtl=True)
-    p._draw_text(d, (center_x, cy), name, "Bold" if fs else "Bold", fill=TEXT,
-                 anchor="mm", rtl=True, role="team")
-
-
-def _row(im, match, y0, y1):
-    d = ImageDraw.Draw(im)
-    cy = (y0 + y1) / 2
-    rh = y1 - y0
-    home, away = match.get("home") or {}, match.get("away") or {}
-    logo = int(max(128, min(172, rh * .78)))
-    for side, x in ((home, 1690), (away, 310)):
-        try:
-            path = p._logo_path(side.get("logo"), side.get("logo_dir", "logos"))
-            p._paste_contained(im, path, x, cy, logo, logo)
-        except Exception:
-            pass
-    _draw_team_name(d, home.get("name_ar") or "", 1410, cy, 340, int(max(38, min(52, rh * .27))))
-    _draw_team_name(d, away.get("name_ar") or "", 590, cy, 340, int(max(38, min(52, rh * .27))))
-    _time(im, (match.get("time") or "16:30").strip(), cy, int(min(112, max(98, rh * .58))))
-
-
-def _day(im, day, y, card_h, row_h):
-    x0, x1 = 120, 1880
-    card_y0, card_y1 = int(y + 34), int(y + card_h)
-    _glass_card(im, (x0, card_y0, x1, card_y1))
-    _date_tab(im, (day.get("date_label") or "").strip(), y + 34)
-    matches = day.get("matches") or []
-    top, bottom = card_y0 + 32, card_y1 - 18
-    actual = (bottom - top) / max(1, len(matches))
-    for i, m in enumerate(matches):
-        a, b = top + i * actual, top + (i + 1) * actual
-        if i:
-            ImageDraw.Draw(im).line((x0 + 48, a, x1 - 48, a), fill=(185, 35, 42, 72), width=2)
-        _row(im, m, a, b)
-
-
-def render_kickoff(matchweek, days: list[dict], brand_logo=None, background=None, scale=1.0):
-    im = _bg(background)
-    d = ImageDraw.Draw(im)
-    try:
-        p._paste_brand_logo(im, W / 2, 125, 205, 205, spec=brand_logo)
-    except Exception:
-        pass
-    p._draw_text(d, (W / 2, 322), "KICK OFF", 178, "ExtraBold", fill=WHITE, anchor="mm", rtl=False, role="time")
-    label = (f"MATCHWEEK #{int(matchweek):02d}" if str(matchweek).isdigit() else f"MATCHWEEK {matchweek}")
-    p._draw_text(d, (W / 2, 438), label, 72, "Bold", fill=WHITE, anchor="mm", rtl=False, role="time")
-    half = p._text_w(d, label, p._font(72, "Bold", "time"), rtl=False) / 2
-    p._flank_lines(im, W / 2, 438, half, (255, 255, 255, 190), ext=120, gap=26, width=3)
-    days = [x for x in days if x.get("matches")]
-    if not days:
-        return im.convert("RGB")
-    top, bottom = 520, 2390
-    date_h, card_offset, inner_bottom, gap = 78, 30, 18, 16
-    row_h = 188
-    def stack_height(rh):
-        return sum(date_h + card_offset + len(x.get("matches") or []) * rh + inner_bottom for x in days) + max(0, len(days) - 1) * gap
-    available = bottom - top
-    total = stack_height(row_h)
-    if total > available:
-        row_h = max(168, int(row_h * available / total))
-    total = stack_height(row_h)
-    y = top + max(0, (available - total) / 2)
+def render_kickoff(matchweek,days:list[dict],brand_logo=None,background=None,scale=1.0):
+    im=_bg(background); d=ImageDraw.Draw(im)
+    try:p._paste_brand_logo(im,W/2,125,205,205,spec=brand_logo)
+    except Exception:pass
+    p._draw_text(d,(W/2,322),"KICK OFF",178,"ExtraBold",fill=WHITE,anchor="mm",rtl=False,role="time")
+    label=(f"MATCHWEEK #{int(matchweek):02d}" if str(matchweek).isdigit() else f"MATCHWEEK {matchweek}"); p._draw_text(d,(W/2,438),label,72,"Bold",fill=WHITE,anchor="mm",rtl=False,role="time")
+    half=p._text_w(d,label,p._font(72,"Bold","time"),rtl=False)/2; p._flank_lines(im,W/2,438,half,(255,255,255,190),ext=120,gap=26,width=3)
+    days=[x for x in days if x.get("matches")]
+    if not days:return im.convert("RGB")
+    top,bottom=520,2390; date_h,card_offset,inner_bottom,gap=78,30,18,16; row_h=188
+    def stack_height(rh):return sum(date_h+card_offset+len(x.get("matches") or [])*rh+inner_bottom for x in days)+max(0,len(days)-1)*gap
+    available=bottom-top; total=stack_height(row_h)
+    if total>available:row_h=max(168,int(row_h*available/total))
+    total=stack_height(row_h); y=top+max(0,(available-total)/2)
     for day in days:
-        card_h = date_h + card_offset + len(day.get("matches") or []) * row_h + inner_bottom
-        _day(im, day, y, card_h, row_h)
-        y += card_h + gap
-    if scale != 1.0:
-        im = im.resize((int(W * scale), int(H * scale)), Image.LANCZOS)
+        card_h=date_h+card_offset+len(day.get("matches") or [])*row_h+inner_bottom; _day(im,day,y,card_h,row_h); y+=card_h+gap
+    if scale!=1.0:im=im.resize((int(W*scale),int(H*scale)),Image.LANCZOS)
     return im.convert("RGB")
