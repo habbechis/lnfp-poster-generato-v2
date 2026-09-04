@@ -6,7 +6,7 @@ from . import poster as p
 from .kickoff_team_names import short_name
 W,H=2000,2500
 WHITE=(255,255,255,255); TEXT=(28,20,22,255); RED=(190,8,18,255); NEON=(255,36,48,255)
-BG_B64=os.path.join(p.STATIC,"img","bg-kickoff-reference.b64")
+BG_B64=os.path.join(p.STATIC,"img","bg-kickoff-supplied.b64")
 
 def _load_image(path):
     im=Image.open(path).convert("RGBA")
@@ -38,7 +38,6 @@ def _composite_local_glow(im,draw_fn,bounds,blur=8,pad=24):
     im.alpha_composite(local.filter(ImageFilter.GaussianBlur(blur)),(cx0,cy0))
 
 def _frosted_polygon(im,points,bounds,tint=(255,255,255,28),blur=3):
-    """Very subtle glass diffusion; keep the plate visually neon rather than milky."""
     x0,y0,x1,y1=map(int,bounds); pad=max(6,int(blur*3))
     cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
     crop=im.crop((cx0,cy0,cx1,cy1)).filter(ImageFilter.GaussianBlur(blur))
@@ -48,7 +47,6 @@ def _frosted_polygon(im,points,bounds,tint=(255,255,255,28),blur=3):
     im.alpha_composite(Image.alpha_composite(crop,glass),(cx0,cy0))
 
 def _inner_neon(im,points,bounds,glow=(255,25,40,145),blur=10,width=13):
-    """Make the plate look lit from inside: soft red energy plus a crisp inner rim."""
     x0,y0,x1,y1=map(int,bounds); pad=max(16,int(blur*3)+4)
     cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
     size=(cx1-cx0,cy1-cy0); local_pts=[(int(x-cx0),int(y-cy0)) for x,y in points]
