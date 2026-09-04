@@ -55,16 +55,15 @@ def _glass_card(im, box):
     glow = Image.new("RGBA", im.size, (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
     gd.rounded_rectangle((x0, y0, x1, y1), radius=44,
-                         fill=(255, 255, 255, 42),
+                         fill=(255, 255, 255, 38),
                          outline=(255, 255, 255, 105), width=7)
     glow = glow.filter(ImageFilter.GaussianBlur(18))
     im.alpha_composite(glow)
-    # Slightly translucent so the supplied red background remains visible.
     d.rounded_rectangle((x0, y0, x1, y1), radius=44,
                         fill=(250, 250, 250, 232),
                         outline=(255, 255, 255, 235), width=7)
     d.rounded_rectangle((x0 + 10, y0 + 10, x1 - 10, y1 - 10), radius=36,
-                        fill=(255, 255, 255, 30),
+                        fill=(255, 255, 255, 28),
                         outline=(196, 24, 30, 118), width=3)
 
 
@@ -94,9 +93,9 @@ def _date_tab(im, text, cy, width=690, height=88):
                  fill=WHITE, anchor="mm", rtl=True)
 
 
-def _time(im, text, cy, h=116):
+def _time(im, text, cy, h=112):
     d = ImageDraw.Draw(im)
-    w, sl = 375, 31
+    w, sl = 345, 29
     cx = W // 2
     x0, x1 = cx - w // 2, cx + w // 2
     y0, y1 = int(cy - h / 2), int(cy + h / 2)
@@ -112,10 +111,10 @@ def _time(im, text, cy, h=116):
             (x1 - sl, y1), (x0 + sl, y1), (x0, cy)]
     d.polygon(poly, fill=RED)
     d.line(poly + [poly[0]], fill=(255, 255, 255, 190), width=4)
-    d.line((x0 + sl + 18, y0 + 9, x1 - sl - 18, y0 + 9),
+    d.line((x0 + sl + 16, y0 + 9, x1 - sl - 16, y0 + 9),
            fill=(255, 255, 255, 105), width=3)
 
-    fs = p._fit_font(d, text, w - 44, 78, "ExtraBold",
+    fs = p._fit_font(d, text, w - 38, 76, "ExtraBold",
                      min_size=40, rtl=False, role="time")
     p._draw_text(d, (cx, cy - 2), text, fs, "ExtraBold",
                  fill=WHITE, anchor="mm", rtl=False, role="time")
@@ -125,11 +124,10 @@ def _row(im, match, y0, y1):
     d = ImageDraw.Draw(im)
     cy = (y0 + y1) / 2
     rh = y1 - y0
-
-    # Keep the crest/name zones completely outside the central time plate.
-    logo = int(max(132, min(190, rh * .90)))
+    logo = int(max(130, min(184, rh * .88)))
     home, away = match.get("home") or {}, match.get("away") or {}
 
+    # Balanced side zones: the central clock owns a clean visual column.
     for side, x in ((home, 1690), (away, 310)):
         try:
             path = p._logo_path(side.get("logo"), side.get("logo_dir", "logos"))
@@ -137,43 +135,43 @@ def _row(im, match, y0, y1):
         except Exception:
             pass
 
-    name_fs = int(max(35, min(52, rh * .27)))
+    name_fs = int(max(34, min(50, rh * .26)))
     hn = (home.get("name_ar") or "").strip()
     an = (away.get("name_ar") or "").strip()
 
-    # Narrower text columns prevent Arabic names from colliding with the clock.
+    # Text stays between crest and chevron, never underneath the clock.
     if hn:
-        fs = p._fit_font(d, hn, 350, name_fs, "Bold", min_size=27, rtl=True)
-        p._draw_text(d, (1635, cy), hn, fs, "Bold",
+        fs = p._fit_font(d, hn, 340, name_fs, "Bold", min_size=26, rtl=True)
+        p._draw_text(d, (1555, cy), hn, fs, "Bold",
                      fill=TEXT, anchor="rm", rtl=True)
     if an:
-        fs = p._fit_font(d, an, 350, name_fs, "Bold", min_size=27, rtl=True)
-        p._draw_text(d, (365, cy), an, fs, "Bold",
+        fs = p._fit_font(d, an, 340, name_fs, "Bold", min_size=26, rtl=True)
+        p._draw_text(d, (445, cy), an, fs, "Bold",
                      fill=TEXT, anchor="lm", rtl=True)
 
-    chev = max(20, int(rh * .105))
-    p._draw_text(d, (790, cy), "«", chev, "Bold", fill=RED,
+    chev = max(18, int(rh * .095))
+    p._draw_text(d, (805, cy), "«", chev, "Bold", fill=RED,
                  anchor="mm", rtl=False)
-    p._draw_text(d, (1210, cy), "»", chev, "Bold", fill=RED,
+    p._draw_text(d, (1195, cy), "»", chev, "Bold", fill=RED,
                  anchor="mm", rtl=False)
     _time(im, (match.get("time") or "16:30").strip(), cy,
-          int(min(118, max(102, rh * .64))))
+          int(min(116, max(100, rh * .62))))
 
 
 def _day(im, day, y, card_h, row_h):
     x0, x1 = 120, 1880
-    card_y0, card_y1 = int(y + 38), int(y + card_h)
+    card_y0, card_y1 = int(y + 36), int(y + card_h)
     _glass_card(im, (x0, card_y0, x1, card_y1))
-    _date_tab(im, (day.get("date_label") or "").strip(), y + 38)
+    _date_tab(im, (day.get("date_label") or "").strip(), y + 36)
 
     matches = day.get("matches") or []
-    top, bottom = card_y0 + 30, card_y1 - 24
+    top, bottom = card_y0 + 32, card_y1 - 24
     actual = (bottom - top) / max(1, len(matches))
     for i, m in enumerate(matches):
         a, b = top + i * actual, top + (i + 1) * actual
         if i:
             ImageDraw.Draw(im).line(
-                (x0 + 48, a, x1 - 48, a),
+                (x0 + 50, a, x1 - 50, a),
                 fill=(175, 25, 30, 65), width=2
             )
         _row(im, m, a, b)
@@ -181,42 +179,37 @@ def _day(im, day, y, card_h, row_h):
 
 def render_kickoff(matchweek, days: list[dict], brand_logo=None,
                    background=None, scale=1.0):
-    """Render a poster on a fixed 2000x2500 canvas (4:5).
-
-    Composition is deliberately fixed to the poster's native coordinate
-    system: a breathing header, a centered fixture stack, and no browser/UI
-    dimensions are used to determine the layout.
-    """
+    """Render on the native 2000x2500 canvas (4:5), independent of browser size."""
     im = _bg(background)
     d = ImageDraw.Draw(im)
 
-    # --- Header zone: logo -> title -> week label, with real breathing room.
+    # HEADER: three distinct typographic levels, with no overlap.
     try:
-        p._paste_brand_logo(im, W / 2, 165, 215, 215, spec=brand_logo)
+        p._paste_brand_logo(im, W / 2, 145, 175, 175, spec=brand_logo)
     except Exception:
         pass
 
-    p._draw_text(d, (W / 2, 380), "KICK OFF", 178, "ExtraBold",
+    p._draw_text(d, (W / 2, 330), "KICK OFF", 176, "ExtraBold",
                  fill=WHITE, anchor="mm", rtl=False, role="time")
 
     label = (f"MATCHWEEK #{int(matchweek):02d}"
              if str(matchweek).isdigit()
              else f"MATCHWEEK {matchweek}")
-    p._draw_text(d, (W / 2, 505), label, 76, "Bold",
+    p._draw_text(d, (W / 2, 455), label, 74, "Bold",
                  fill=WHITE, anchor="mm", rtl=False, role="time")
-    half = p._text_w(d, label, p._font(76, "Bold", "time"), rtl=False) / 2
-    p._flank_lines(im, W / 2, 505, half,
-                   (255, 255, 255, 175), ext=130, gap=28, width=3)
+    half = p._text_w(d, label, p._font(74, "Bold", "time"), rtl=False) / 2
+    p._flank_lines(im, W / 2, 455, half,
+                   (255, 255, 255, 175), ext=125, gap=26, width=3)
 
     days = [x for x in days if x.get("matches")]
     if not days:
         return im.convert("RGB")
 
-    # --- Fixture zone: occupies roughly the lower 70% of the 4:5 poster.
-    # Compact overhead + adaptive rows keep every day/card visually legible.
-    top, bottom = 610, 2390
-    date_h, card_offset, inner_bottom, gap = 82, 34, 22, 22
-    row_h = 158
+    # FIXTURE ZONE: deliberately starts below the header and uses the full
+    # remaining 4:5 canvas without allowing rows to collapse excessively.
+    top, bottom = 535, 2390
+    date_h, card_offset, inner_bottom, gap = 82, 34, 22, 20
+    row_h = 164
 
     def stack_height(rh):
         return sum(date_h + card_offset + len(x.get("matches") or []) * rh
