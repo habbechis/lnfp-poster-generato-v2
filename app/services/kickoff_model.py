@@ -37,8 +37,9 @@ def _composite_local_glow(im,draw_fn,bounds,blur=8,pad=24):
     local=Image.new("RGBA",(cx1-cx0,cy1-cy0),(0,0,0,0)); draw_fn(ImageDraw.Draw(local),cx0,cy0)
     im.alpha_composite(local.filter(ImageFilter.GaussianBlur(blur)),(cx0,cy0))
 
-def _frosted_polygon(im,points,bounds,tint=(255,255,255,72),blur=7):
-    x0,y0,x1,y1=map(int,bounds); pad=max(10,int(blur*3))
+def _frosted_polygon(im,points,bounds,tint=(255,255,255,28),blur=3):
+    """Very subtle glass diffusion; keep the plate visually neon rather than milky."""
+    x0,y0,x1,y1=map(int,bounds); pad=max(6,int(blur*3))
     cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
     crop=im.crop((cx0,cy0,cx1,cy1)).filter(ImageFilter.GaussianBlur(blur))
     mask=Image.new("L",crop.size,0); shifted=[(int(x-cx0),int(y-cy0)) for x,y in points]
@@ -46,23 +47,26 @@ def _frosted_polygon(im,points,bounds,tint=(255,255,255,72),blur=7):
     glass=Image.new("RGBA",crop.size,tint); glass.putalpha(mask)
     im.alpha_composite(Image.alpha_composite(crop,glass),(cx0,cy0))
 
-def _glass_sheen(im,points,bounds):
-    x0,y0,x1,y1=map(int,bounds); pad=16
+def _inner_neon(im,points,bounds,glow=(255,25,40,145),blur=10,width=13):
+    """Make the plate look lit from inside: soft red energy plus a crisp inner rim."""
+    x0,y0,x1,y1=map(int,bounds); pad=max(16,int(blur*3)+4)
     cx0,cy0=max(0,x0-pad),max(0,y0-pad); cx1,cy1=min(im.width,x1+pad+1),min(im.height,y1+pad+1)
-    size=(cx1-cx0,cy1-cy0); mask=Image.new("L",size,0)
-    local_pts=[(int(x-cx0),int(y-cy0)) for x,y in points]; ImageDraw.Draw(mask).polygon(local_pts,fill=255)
-    sheen=Image.new("RGBA",size,(0,0,0,0)); sd=ImageDraw.Draw(sheen); w,h=size
-    sd.polygon([(-int(.12*w),int(.02*h)),(int(.04*w),int(.02*h)),(int(1.02*w),int(.82*h)),(int(.98*w),int(.98*h))],fill=(255,255,255,32))
-    sd.polygon([(-int(.08*w),int(.08*h)),(-int(.03*w),int(.08*h)),(int(.93*w),int(.86*h)),(int(.88*w),int(.86*h))],fill=(255,255,255,125))
-    sd.rounded_rectangle((int(.08*w),int(.08*h),int(.72*w),int(.20*h)),radius=max(6,int(.05*h)),fill=(255,255,255,58))
-    sheen.putalpha(Image.composite(sheen.getchannel("A"),Image.new("L",size,0),mask))
-    im.alpha_composite(sheen.filter(ImageFilter.GaussianBlur(1.8)),(cx0,cy0))
+    size=(cx1-cx0,cy1-cy0); local_pts=[(int(x-cx0),int(y-cy0)) for x,y in points]
+    shape=Image.new("L",size,0); ImageDraw.Draw(shape).polygon(local_pts,fill=255)
+    glow_layer=Image.new("RGBA",size,(0,0,0,0)); gd=ImageDraw.Draw(glow_layer)
+    gd.line(local_pts+[local_pts[0]],fill=glow,width=width,joint="curve")
+    glow_layer.putalpha(Image.composite(glow_layer.getchannel("A"),Image.new("L",size,0),shape))
+    im.alpha_composite(glow_layer.filter(ImageFilter.GaussianBlur(blur)),(cx0,cy0))
+    rim=Image.new("RGBA",size,(0,0,0,0)); rd=ImageDraw.Draw(rim)
+    rd.line(local_pts+[local_pts[0]],fill=(255,42,55,180),width=4,joint="curve")
+    rim.putalpha(Image.composite(rim.getchannel("A"),Image.new("L",size,0),shape))
+    im.alpha_composite(rim,(cx0,cy0))
 
 def _neon_outline(im,box,radius=38,glow_alpha=55,blur=8,width=3):
     x0,y0,x1,y1=map(int,box)
     def glow_line(gd,ox,oy):gd.rounded_rectangle((x0-ox,y0-oy,x1-ox,y1-oy),radius=radius,outline=(255,28,42,glow_alpha),width=width+4)
     _composite_local_glow(im,glow_line,(x0,y0,x1,y1),blur=blur,pad=28); d=ImageDraw.Draw(im)
-    d.rounded_rectangle((x0,y0,x1,y1),radius=radius,outline=(255,255,255,238),width=width)
+    d.rounded_rectangle((x0,y0,x1,y1),radius=radius,outline=(255,255,255,238),width=3)
     d.rounded_rectangle((x0+7,y0+7,x1-7,y1-7),radius=max(8,radius-7),outline=(NEON[0],NEON[1],NEON[2],180),width=2)
 
 def _glass_card(im,box):
@@ -73,23 +77,30 @@ def _glass_card(im,box):
 def _date_tab(im,text,cy,width=650,height=82):
     cx=W//2; x0,x1=int(cx-width/2),int(cx+width/2); y0,y1=int(cy-height/2),int(cy+height/2)
     pts=[(x0+34,y0),(x0+80,y0),(x0+102,y0-17),(x1-102,y0-17),(x1-80,y0),(x1-34,y0),(x1,y0+16),(x1,y1-16),(x1-34,y1),(x0+34,y1),(x0,y1-16),(x0,y0+16)]
-    def glow_line(gd,ox,oy):
-        shifted=[(x-ox,y-oy) for x,y in pts]; gd.line(shifted+[shifted[0]],fill=(255,30,42,65),width=8,joint="curve")
     bounds=(min(x for x,_ in pts),min(y for _,y in pts),max(x for x,_ in pts),max(y for _,y in pts))
-    _composite_local_glow(im,glow_line,bounds,blur=7,pad=24); _frosted_polygon(im,pts,bounds,tint=(255,255,255,70),blur=7)
-    d=ImageDraw.Draw(im); d.polygon(pts,fill=(150,5,16,88)); d.line(pts+[pts[0]],fill=(255,255,255,242),width=3,joint="curve"); _glass_sheen(im,pts,bounds); d=ImageDraw.Draw(im)
-    d.line((x0+38,y0+5,x1-38,y0+5),fill=(255,255,255,180),width=2); d.line((x0+44,y1-5,x1-44,y1-5),fill=(255,36,48,125),width=2)
+    def glow_line(gd,ox,oy):
+        shifted=[(x-ox,y-oy) for x,y in pts]; gd.line(shifted+[shifted[0]],fill=(255,30,42,100),width=9,joint="curve")
+    _composite_local_glow(im,glow_line,bounds,blur=8,pad=26)
+    _frosted_polygon(im,pts,bounds,tint=(255,255,255,24),blur=3)
+    d=ImageDraw.Draw(im); d.polygon(pts,fill=(142,4,15,92)); d.line(pts+[pts[0]],fill=(255,255,255,238),width=3,joint="curve")
+    _inner_neon(im,pts,bounds,glow=(255,25,40,175),blur=11,width=15)
+    d=ImageDraw.Draw(im)
+    d.line((x0+44,y0+7,x1-44,y0+7),fill=(255,65,75,135),width=2)
     gx,gy,s=x0+52,int(cy),24; d.rounded_rectangle((gx-s,gy-s+2,gx+s,gy+s),radius=6,outline=WHITE,width=5); d.line((gx-s,gy-5,gx+s,gy-5),fill=WHITE,width=4); d.line((gx-12,gy-s-3,gx-12,gy-12),fill=WHITE,width=5); d.line((gx+12,gy-s-3,gx+12,gy-12),fill=WHITE,width=5)
     fs=p._fit_font(d,text,width-118,46,"Bold",min_size=28,rtl=True); p._draw_text(d,(cx+24,cy),text,fs,"Bold",fill=WHITE,anchor="mm",rtl=True)
 
 def _time(im,text,cy,h=112):
     w,sl=320,28; cx=W//2; x0,x1=cx-w//2,cx+w//2; y0,y1=int(cy-h/2),int(cy+h/2)
-    poly=[(x0+sl,y0),(x1-sl,y0),(x1,cy),(x1-sl,y1),(x0+sl,y1),(x0,cy)]
+    poly=[(x0+sl,y0),(x1-sl,y0),(x1,cy),(x1-sl,y1),(x0+sl,y1),(x0,cy)]; bounds=(x0,y0,x1,y1)
     def glow_line(gd,ox,oy):
-        shifted=[(x-ox,y-oy) for x,y in poly]; gd.line(shifted+[shifted[0]],fill=(255,28,40,70),width=6,joint="curve")
-    _composite_local_glow(im,glow_line,(x0,y0,x1,y1),blur=6,pad=22); _frosted_polygon(im,poly,(x0,y0,x1,y1),tint=(255,255,255,76),blur=7)
-    d=ImageDraw.Draw(im); d.polygon(poly,fill=(170,5,17,105)); d.line(poly+[poly[0]],fill=(255,255,255,247),width=4,joint="curve"); _glass_sheen(im,poly,(x0,y0,x1,y1)); d=ImageDraw.Draw(im)
-    d.line((x0+sl+14,y0+8,x1-sl-14,y0+8),fill=(255,255,255,205),width=2); d.line((x0+18,cy,x0+42,cy),fill=(255,255,255,125),width=2); d.line((x1-42,cy,x1-18,cy),fill=(255,255,255,125),width=2)
+        shifted=[(x-ox,y-oy) for x,y in poly]; gd.line(shifted+[shifted[0]],fill=(255,28,40,105),width=9,joint="curve")
+    _composite_local_glow(im,glow_line,bounds,blur=7,pad=24)
+    _frosted_polygon(im,poly,bounds,tint=(255,255,255,22),blur=3)
+    d=ImageDraw.Draw(im); d.polygon(poly,fill=(155,4,16,92)); d.line(poly+[poly[0]],fill=(255,255,255,242),width=3,joint="curve")
+    _inner_neon(im,poly,bounds,glow=(255,24,40,190),blur=10,width=16)
+    d=ImageDraw.Draw(im)
+    d.line((x0+sl+14,y0+8,x1-sl-14,y0+8),fill=(255,55,68,145),width=2)
+    d.line((x0+18,cy,x0+42,cy),fill=(255,75,85,120),width=2); d.line((x1-42,cy,x1-18,cy),fill=(255,75,85,120),width=2)
     fs=p._fit_font(d,text,w-32,78,"ExtraBold",min_size=44,rtl=False,role="time"); p._draw_text(d,(cx,cy-1),text,fs,"ExtraBold",fill=WHITE,anchor="mm",rtl=False,role="time")
 
 def _draw_team_name(d,name,center_x,cy,max_width,size):
