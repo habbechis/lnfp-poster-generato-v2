@@ -6,7 +6,7 @@ from . import poster as p
 from .kickoff_team_names import short_name
 W,H=2000,2500
 WHITE=(255,255,255,255); TEXT=(28,20,22,255); RED=(190,8,18,255); NEON=(255,36,48,255)
-BG_B64=os.path.join(p.STATIC,"img","bg-kickoff-supplied.b64")
+BG_B64=os.path.join(p.STATIC,"img","bg-kickoff-exact.b64")
 
 def _load_image(path):
     im=Image.open(path).convert("RGBA")
@@ -82,8 +82,7 @@ def _date_tab(im,text,cy,width=650,height=82):
     _frosted_polygon(im,pts,bounds,tint=(255,255,255,24),blur=3)
     d=ImageDraw.Draw(im); d.polygon(pts,fill=(142,4,15,92)); d.line(pts+[pts[0]],fill=(255,255,255,238),width=3,joint="curve")
     _inner_neon(im,pts,bounds,glow=(255,25,40,175),blur=11,width=15)
-    d=ImageDraw.Draw(im)
-    d.line((x0+44,y0+7,x1-44,y0+7),fill=(255,65,75,135),width=2)
+    d=ImageDraw.Draw(im); d.line((x0+44,y0+7,x1-44,y0+7),fill=(255,65,75,135),width=2)
     gx,gy,s=x0+52,int(cy),24; d.rounded_rectangle((gx-s,gy-s+2,gx+s,gy+s),radius=6,outline=WHITE,width=5); d.line((gx-s,gy-5,gx+s,gy-5),fill=WHITE,width=4); d.line((gx-12,gy-s-3,gx-12,gy-12),fill=WHITE,width=5); d.line((gx+12,gy-s-3,gx+12,gy-12),fill=WHITE,width=5)
     fs=p._fit_font(d,text,width-118,46,"Bold",min_size=28,rtl=True); p._draw_text(d,(cx+24,cy),text,fs,"Bold",fill=WHITE,anchor="mm",rtl=True)
 
@@ -96,8 +95,7 @@ def _time(im,text,cy,h=112):
     _frosted_polygon(im,poly,bounds,tint=(255,255,255,22),blur=3)
     d=ImageDraw.Draw(im); d.polygon(poly,fill=(155,4,16,92)); d.line(poly+[poly[0]],fill=(255,255,255,242),width=3,joint="curve")
     _inner_neon(im,poly,bounds,glow=(255,24,40,190),blur=10,width=16)
-    d=ImageDraw.Draw(im)
-    d.line((x0+sl+14,y0+8,x1-sl-14,y0+8),fill=(255,55,68,145),width=2)
+    d=ImageDraw.Draw(im); d.line((x0+sl+14,y0+8,x1-sl-14,y0+8),fill=(255,55,68,145),width=2)
     d.line((x0+18,cy,x0+42,cy),fill=(255,75,85,120),width=2); d.line((x1-42,cy,x1-18,cy),fill=(255,75,85,120),width=2)
     fs=p._fit_font(d,text,w-32,78,"ExtraBold",min_size=44,rtl=False,role="time"); p._draw_text(d,(cx,cy-1),text,fs,"ExtraBold",fill=WHITE,anchor="mm",rtl=False,role="time")
 
