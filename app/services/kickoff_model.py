@@ -6,6 +6,7 @@ import io
 import os
 from PIL import Image, ImageDraw, ImageFilter
 from . import poster as p
+from .kickoff_team_names import short_name
 
 W, H = 2000, 2500
 WHITE = (255, 255, 255, 255)
@@ -86,7 +87,6 @@ def _date_tab(im, text, cy, width=650, height=82):
            (x1 - 102, y0 - 17), (x1 - 80, y0), (x1 - 34, y0),
            (x1, y0 + 16), (x1, y1 - 16), (x1 - 34, y1),
            (x0 + 34, y1), (x0, y1 - 16), (x0, y0 + 16)]
-    # Date tab neon only; no shadow.
     glow = Image.new("RGBA", im.size, (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
     gd.line(pts + [pts[0]], fill=(255, 30, 42, 65), width=8, joint="curve")
@@ -106,7 +106,6 @@ def _date_tab(im, text, cy, width=650, height=82):
 
 
 def _time(im, text, cy, h=112):
-    """Clean time capsule with a thin neon edge and zero black shadow."""
     d = ImageDraw.Draw(im)
     w, sl = 320, 28
     cx = W // 2
@@ -114,13 +113,10 @@ def _time(im, text, cy, h=112):
     y0, y1 = int(cy - h / 2), int(cy + h / 2)
     poly = [(x0 + sl, y0), (x1 - sl, y0), (x1, cy),
             (x1 - sl, y1), (x0 + sl, y1), (x0, cy)]
-
-    # Only a red perimeter halo. No filled blur and no dark contour.
     glow = Image.new("RGBA", im.size, (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
     gd.line(poly + [poly[0]], fill=(255, 28, 40, 70), width=6, joint="curve")
     im.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
-
     d.polygon(poly, fill=(187, 7, 18, 255))
     d.line(poly + [poly[0]], fill=(255, 255, 255, 245), width=4, joint="curve")
     d.line((x0 + sl + 14, y0 + 8, x1 - sl - 14, y0 + 8),
@@ -132,6 +128,7 @@ def _time(im, text, cy, h=112):
 
 
 def _draw_team_name(d, name, center_x, cy, max_width, size):
+    name = short_name(name)
     if not name:
         return
     fs = p._fit_font(d, name, max_width, size, "Bold", min_size=30, rtl=True)
@@ -144,8 +141,6 @@ def _row(im, match, y0, y1):
     cy = (y0 + y1) / 2
     rh = y1 - y0
     home, away = match.get("home") or {}, match.get("away") or {}
-
-    # Dedicated columns. Logos have no glow/outline/filter.
     logo = int(max(128, min(172, rh * .78)))
     for side, x in ((home, 1690), (away, 310)):
         try:
@@ -154,10 +149,9 @@ def _row(im, match, y0, y1):
         except Exception:
             pass
 
-    # Text columns stop well before the central time capsule.
-    _draw_team_name(d, (home.get("name_ar") or "").strip(), 1450, cy, 420,
+    _draw_team_name(d, home.get("name_ar") or "", 1450, cy, 420,
                     int(max(38, min(52, rh * .27))))
-    _draw_team_name(d, (away.get("name_ar") or "").strip(), 550, cy, 420,
+    _draw_team_name(d, away.get("name_ar") or "", 550, cy, 420,
                     int(max(38, min(52, rh * .27))))
     _time(im, (match.get("time") or "16:30").strip(), cy,
           int(min(112, max(98, rh * .58))))
@@ -175,8 +169,8 @@ def _day(im, day, y, card_h, row_h):
     for i, m in enumerate(matches):
         a, b = top + i * actual, top + (i + 1) * actual
         if i:
-            d = ImageDraw.Draw(im)
-            d.line((x0 + 48, a, x1 - 48, a), fill=(185, 35, 42, 72), width=2)
+            ImageDraw.Draw(im).line((x0 + 48, a, x1 - 48, a),
+                                    fill=(185, 35, 42, 72), width=2)
         _row(im, m, a, b)
 
 
@@ -185,8 +179,6 @@ def render_kickoff(matchweek, days: list[dict], brand_logo=None,
     """Dynamic premium KICK OFF poster on a fixed native 2000x2500 canvas."""
     im = _bg(background)
     d = ImageDraw.Draw(im)
-
-    # Header: deliberate vertical hierarchy and breathing room.
     try:
         p._paste_brand_logo(im, W / 2, 125, 205, 205, spec=brand_logo)
     except Exception:
@@ -205,7 +197,6 @@ def render_kickoff(matchweek, days: list[dict], brand_logo=None,
     if not days:
         return im.convert("RGB")
 
-    # The fixture zone is treated as a designed grid, not a compressed table.
     top, bottom = 520, 2390
     date_h, card_offset, inner_bottom, gap = 78, 30, 18, 16
     row_h = 188
