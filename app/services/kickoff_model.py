@@ -173,9 +173,11 @@ def _row(im, match, y0, y1):
         except Exception:
             pass
 
-    _draw_team_name(d, home.get("name_ar") or "", 1450, cy, 420,
+    # Fixed text columns keep every Arabic team name clear of the central time plate.
+    # The Excel-approved two-word names are still applied by short_name().
+    _draw_team_name(d, home.get("name_ar") or "", 1410, cy, 340,
                     int(max(38, min(52, rh * .27))))
-    _draw_team_name(d, away.get("name_ar") or "", 550, cy, 420,
+    _draw_team_name(d, away.get("name_ar") or "", 590, cy, 340,
                     int(max(38, min(52, rh * .27))))
     _time(im, (match.get("time") or "16:30").strip(), cy,
           int(min(112, max(98, rh * .58))))
