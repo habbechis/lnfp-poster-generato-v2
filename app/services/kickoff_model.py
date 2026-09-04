@@ -60,8 +60,8 @@ def _composite_local_glow(im, draw_fn, bounds, blur=8, pad=24):
     im.alpha_composite(local.filter(ImageFilter.GaussianBlur(blur)), (cx0, cy0))
 
 
-def _frosted_polygon(im, points, bounds, tint=(255, 255, 255, 62), blur=7):
-    """Apply a local frosted-glass blur/tint inside a polygon."""
+def _frosted_polygon(im, points, bounds, tint=(255, 255, 255, 72), blur=7):
+    """Locally blur and tint a polygon so the background remains visible through glass."""
     x0, y0, x1, y1 = map(int, bounds)
     pad = max(10, int(blur * 3))
     cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
@@ -72,8 +72,41 @@ def _frosted_polygon(im, points, bounds, tint=(255, 255, 255, 62), blur=7):
     ImageDraw.Draw(mask).polygon(shifted, fill=255)
     glass = Image.new("RGBA", crop.size, tint)
     glass.putalpha(mask)
-    glass = Image.alpha_composite(crop, glass)
-    im.alpha_composite(glass, (cx0, cy0))
+    im.alpha_composite(Image.alpha_composite(crop, glass), (cx0, cy0))
+
+
+def _glass_sheen(im, points, bounds, direction="down"):
+    """Add a visible premium glass reflection clipped to the shape."""
+    x0, y0, x1, y1 = map(int, bounds)
+    pad = 16
+    cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
+    cx1, cy1 = min(im.width, x1 + pad + 1), min(im.height, y1 + pad + 1)
+    size = (cx1 - cx0, cy1 - cy0)
+    mask = Image.new("L", size, 0)
+    local_pts = [(int(x - cx0), int(y - cy0)) for x, y in points]
+    ImageDraw.Draw(mask).polygon(local_pts, fill=255)
+
+    sheen = Image.new("RGBA", size, (0, 0, 0, 0))
+    sd = ImageDraw.Draw(sheen)
+    w, h = size
+    # Broad diagonal reflection band.
+    band = [(int(-0.12 * w), int(0.02 * h)),
+            (int(0.04 * w), int(0.02 * h)),
+            (int(1.02 * w), int(0.82 * h)),
+            (int(0.98 * w), int(0.98 * h))]
+    sd.polygon(band, fill=(255, 255, 255, 28))
+    # Thin specular streak makes the glass visibly catch light.
+    streak = [(int(-0.08 * w), int(0.08 * h)),
+              (int(-0.03 * w), int(0.08 * h)),
+              (int(0.93 * w), int(0.86 * h)),
+              (int(0.88 * w), int(0.86 * h))]
+    sd.polygon(streak, fill=(255, 255, 255, 105))
+    # Soft highlight near the upper edge.
+    sd.rounded_rectangle((int(0.08 * w), int(0.08 * h), int(0.72 * w), int(0.20 * h)),
+                         radius=max(6, int(0.05 * h)), fill=(255, 255, 255, 48))
+    sheen.putalpha(Image.composite(sheen.getchannel("A"), Image.new("L", size, 0), mask))
+    sheen = sheen.filter(ImageFilter.GaussianBlur(2.2))
+    im.alpha_composite(sheen, (cx0, cy0))
 
 
 def _neon_outline(im, box, radius=38, glow_alpha=55, blur=8, width=3):
@@ -110,17 +143,16 @@ def _date_tab(im, text, cy, width=650, height=82):
     def glow_line(gd, ox, oy):
         shifted = [(x - ox, y - oy) for x, y in pts]
         gd.line(shifted + [shifted[0]], fill=(255, 30, 42, 65), width=8, joint="curve")
-    _composite_local_glow(im, glow_line,
-        (min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts)),
-        blur=7, pad=24)
-    _frosted_polygon(im, pts,
-        (min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts)),
-        tint=(255, 255, 255, 58), blur=6)
+    bounds = (min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts))
+    _composite_local_glow(im, glow_line, bounds, blur=7, pad=24)
+    _frosted_polygon(im, pts, bounds, tint=(255, 255, 255, 70), blur=7)
     d = ImageDraw.Draw(im)
-    d.polygon(pts, fill=(150, 5, 16, 104))
-    d.line(pts + [pts[0]], fill=(255, 255, 255, 240), width=3, joint="curve")
-    d.line((x0 + 38, y0 + 5, x1 - 38, y0 + 5), fill=(255, 255, 255, 120), width=2)
-    d.line((x0 + 44, y1 - 5, x1 - 44, y1 - 5), fill=(255, 36, 48, 110), width=2)
+    d.polygon(pts, fill=(150, 5, 16, 88))
+    d.line(pts + [pts[0]], fill=(255, 255, 255, 242), width=3, joint="curve")
+    _glass_sheen(im, pts, bounds)
+    d = ImageDraw.Draw(im)
+    d.line((x0 + 38, y0 + 5, x1 - 38, y0 + 5), fill=(255, 255, 255, 180), width=2)
+    d.line((x0 + 44, y1 - 5, x1 - 44, y1 - 5), fill=(255, 36, 48, 125), width=2)
     gx, gy, s = x0 + 52, int(cy), 24
     d.rounded_rectangle((gx - s, gy - s + 2, gx + s, gy + s), radius=6, outline=WHITE, width=5)
     d.line((gx - s, gy - 5, gx + s, gy - 5), fill=WHITE, width=4)
@@ -139,14 +171,17 @@ def _time(im, text, cy, h=112):
     def glow_line(gd, ox, oy):
         shifted = [(x - ox, y - oy) for x, y in poly]
         gd.line(shifted + [shifted[0]], fill=(255, 28, 40, 70), width=6, joint="curve")
-    _composite_local_glow(im, glow_line, (x0, y0, x1, y1), blur=6, pad=22)
-    _frosted_polygon(im, poly, (x0, y0, x1, y1), tint=(255, 255, 255, 68), blur=6)
+    bounds = (x0, y0, x1, y1)
+    _composite_local_glow(im, glow_line, bounds, blur=6, pad=22)
+    _frosted_polygon(im, poly, bounds, tint=(255, 255, 255, 76), blur=7)
     d = ImageDraw.Draw(im)
-    d.polygon(poly, fill=(170, 5, 17, 118))
-    d.line(poly + [poly[0]], fill=(255, 255, 255, 245), width=4, joint="curve")
-    d.line((x0 + sl + 14, y0 + 8, x1 - sl - 14, y0 + 8), fill=(255, 255, 255, 175), width=2)
-    d.line((x0 + 18, cy, x0 + 42, cy), fill=(255, 255, 255, 110), width=2)
-    d.line((x1 - 42, cy, x1 - 18, cy), fill=(255, 255, 255, 110), width=2)
+    d.polygon(poly, fill=(170, 5, 17, 105))
+    d.line(poly + [poly[0]], fill=(255, 255, 255, 247), width=4, joint="curve")
+    _glass_sheen(im, poly, bounds)
+    d = ImageDraw.Draw(im)
+    d.line((x0 + sl + 14, y0 + 8, x1 - sl - 14, y0 + 8), fill=(255, 255, 255, 205), width=2)
+    d.line((x0 + 18, cy, x0 + 42, cy), fill=(255, 255, 255, 125), width=2)
+    d.line((x1 - 42, cy, x1 - 18, cy), fill=(255, 255, 255, 125), width=2)
     fs = p._fit_font(d, text, w - 32, 78, "ExtraBold", min_size=44, rtl=False, role="time")
     p._draw_text(d, (cx, cy - 1), text, fs, "ExtraBold", fill=WHITE, anchor="mm", rtl=False, role="time")
 
@@ -156,7 +191,8 @@ def _draw_team_name(d, name, center_x, cy, max_width, size):
     if not name:
         return
     fs = p._fit_font(d, name, max_width, size, "Bold", min_size=30, rtl=True)
-    p._draw_text(d, (center_x, cy), name, fs, "Bold", fill=TEXT, anchor="mm", rtl=True)
+    p._draw_text(d, (center_x, cy), name, "Bold" if fs else "Bold", fill=TEXT,
+                 anchor="mm", rtl=True, role="team")
 
 
 def _row(im, match, y0, y1):
