@@ -51,14 +51,29 @@ def _bg(background=None):
     return Image.new("RGBA", (W, H), (82, 0, 8, 255))
 
 
+def _composite_local_glow(im, draw_fn, bounds, blur=8, pad=24):
+    """Blur only a local crop around a neon shape, never the full canvas."""
+    x0, y0, x1, y1 = map(int, bounds)
+    pad = max(int(pad), int(blur * 3) + 4)
+    cx0 = max(0, x0 - pad)
+    cy0 = max(0, y0 - pad)
+    cx1 = min(im.width, x1 + pad + 1)
+    cy1 = min(im.height, y1 + pad + 1)
+    local = Image.new("RGBA", (cx1 - cx0, cy1 - cy0), (0, 0, 0, 0))
+    draw_fn(ImageDraw.Draw(local), cx0, cy0)
+    im.alpha_composite(local.filter(ImageFilter.GaussianBlur(blur)), (cx0, cy0))
+
+
 def _neon_outline(im, box, radius=38, glow_alpha=55, blur=8, width=3):
     """Premium neon frame: thin luminous edge, no dark drop shadow."""
     x0, y0, x1, y1 = map(int, box)
-    glow = Image.new("RGBA", im.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.rounded_rectangle((x0, y0, x1, y1), radius=radius,
-                         outline=(255, 28, 42, glow_alpha), width=width + 4)
-    im.alpha_composite(glow.filter(ImageFilter.GaussianBlur(blur)))
+
+    def glow_line(gd, ox, oy):
+        gd.rounded_rectangle((x0 - ox, y0 - oy, x1 - ox, y1 - oy),
+                             radius=radius, outline=(255, 28, 42, glow_alpha),
+                             width=width + 4)
+
+    _composite_local_glow(im, glow_line, (x0, y0, x1, y1), blur=blur, pad=28)
     d = ImageDraw.Draw(im)
     d.rounded_rectangle((x0, y0, x1, y1), radius=radius,
                         outline=(255, 255, 255, 238), width=width)
@@ -87,10 +102,17 @@ def _date_tab(im, text, cy, width=650, height=82):
            (x1 - 102, y0 - 17), (x1 - 80, y0), (x1 - 34, y0),
            (x1, y0 + 16), (x1, y1 - 16), (x1 - 34, y1),
            (x0 + 34, y1), (x0, y1 - 16), (x0, y0 + 16)]
-    glow = Image.new("RGBA", im.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.line(pts + [pts[0]], fill=(255, 30, 42, 65), width=8, joint="curve")
-    im.alpha_composite(glow.filter(ImageFilter.GaussianBlur(7)))
+
+    def glow_line(gd, ox, oy):
+        shifted = [(x - ox, y - oy) for x, y in pts]
+        gd.line(shifted + [shifted[0]], fill=(255, 30, 42, 65), width=8, joint="curve")
+
+    _composite_local_glow(
+        im, glow_line,
+        (min(x for x, _ in pts), min(y for _, y in pts),
+         max(x for x, _ in pts), max(y for _, y in pts)),
+        blur=7, pad=24,
+    )
     d.polygon(pts, fill=RED)
     d.line(pts + [pts[0]], fill=(255, 255, 255, 235), width=3, joint="curve")
 
@@ -113,10 +135,12 @@ def _time(im, text, cy, h=112):
     y0, y1 = int(cy - h / 2), int(cy + h / 2)
     poly = [(x0 + sl, y0), (x1 - sl, y0), (x1, cy),
             (x1 - sl, y1), (x0 + sl, y1), (x0, cy)]
-    glow = Image.new("RGBA", im.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.line(poly + [poly[0]], fill=(255, 28, 40, 70), width=6, joint="curve")
-    im.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
+
+    def glow_line(gd, ox, oy):
+        shifted = [(x - ox, y - oy) for x, y in poly]
+        gd.line(shifted + [shifted[0]], fill=(255, 28, 40, 70), width=6, joint="curve")
+
+    _composite_local_glow(im, glow_line, (x0, y0, x1, y1), blur=6, pad=22)
     d.polygon(poly, fill=(187, 7, 18, 255))
     d.line(poly + [poly[0]], fill=(255, 255, 255, 245), width=4, joint="curve")
     d.line((x0 + sl + 14, y0 + 8, x1 - sl - 14, y0 + 8),
