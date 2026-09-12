@@ -14,7 +14,7 @@
     { "code": "ob", "name_ar": "الأولمبي الباجي", "name_fr": "Olympique de Béja", "short": "OB", "logo": "ob.png", "stadium_ar": "ملعب بوجمعة الكميتي بباجة", "city_ar": "باجة" },
     { "code": "cshl", "name_ar": "النادي الرياضي لحمام الأنف", "name_fr": "Club Sportif de Hammam-Lif", "short": "CSHL", "logo": "cshl.png", "stadium_ar": "الملعب البلدي بحمام الأنف", "city_ar": "حمام الأنف" },
     { "code": "eshs", "name_ar": "الأمل الرياضي بحمام سوسة", "name_fr": "Espoir Sportif de Hammam Sousse", "short": "ESHS", "logo": "eshs.png", "stadium_ar": "ملعب بوعلي الحوار بحمام سوسة", "city_ar": "حمام سوسة" },
-    { "code": "jso", "name_ar": "الشبيبة الرياضية العمرانية", "name_fr": "Jeunesse Sportive d'El Omrane", "short": "JSO", "logo": "jso.png", "stadium_ar": "ملعب الشاذلي زويتن بتونس", "city_ar": "العمران" },
+    { "code": "jso", "name_ar": "الشبيبة الرياضية بالعمران", "name_fr": "Jeunesse Sportive d'El Omrane", "short": "JSO", "logo": "jso.png", "stadium_ar": "ملعب الشاذلي زويتن بتونس", "city_ar": "العمران" },
     { "code": "pss", "name_ar": "التقدم الرياضي بساقية الداير", "name_fr": "Progrès Sportif de Sakiet Eddaïer", "short": "PSS", "logo": "pss.png", "stadium_ar": "ملعب الطيب المهيري بصفاقس", "city_ar": "صفاقس" }
   ]
 }
