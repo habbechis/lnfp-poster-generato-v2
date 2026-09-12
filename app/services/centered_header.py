@@ -1,32 +1,52 @@
-"""Compatibility patch for centering the standard poster header group.
+"""Center the fixtures header while preserving the results header."""
+from __future__ import annotations
 
-The results and fixtures title assets have different intrinsic widths, so each
-asset needs its own anchor in order for the complete visible group to be
-visually centered.
-"""
+import inspect
+import os
+import threading
+
 from . import poster
 
-_original_paste_brand_logo = poster._paste_brand_logo
-_original_paste_title_image = poster._paste_title_image
+_ORIGINAL_RENDER = poster.render_poster
+_ORIGINAL_LOGO = poster._paste_brand_logo
+_ORIGINAL_TITLE = poster._paste_title_image
+_LOCK = threading.RLock()
 
 
-def _centered_brand_logo(base, cx, cy, box_w, box_h, spec=None):
+def _fixtures_logo(base, cx, cy, box_w, box_h, spec=None):
     if cx == 1560 and box_w in (420, 430) and cy in (280, 290):
-        # Fixtures only: keep the results header exactly as it is.
-        if cy == 290:
-            cx = 1510
-    return _original_paste_brand_logo(base, cx, cy, box_w, box_h, spec=spec)
+        cx = 1510
+    return _ORIGINAL_LOGO(base, cx, cy, box_w, box_h, spec=spec)
 
 
-def _centered_title_image(base, name, right_x, cy, max_w, max_h):
+def _fixtures_title(base, name, right_x, cy, max_w, max_h):
     if right_x == 1330 and cy in (290, 300):
-        asset_name = str(name or "").lower()
-        # Fixtures only: use a separate anchor because its title asset has
-        # different intrinsic dimensions. The results title is untouched.
-        if "fixture" in asset_name or "match" in asset_name:
-            right_x = 1030
-    return _original_paste_title_image(base, name, right_x, cy, max_w, max_h)
+        right_x = 1030
+    return _ORIGINAL_TITLE(base, name, right_x, cy, max_w, max_h)
 
 
-poster._paste_brand_logo = _centered_brand_logo
-poster._paste_title_image = _centered_title_image
+def _is_fixtures(args, kwargs):
+    try:
+        bound = inspect.signature(_ORIGINAL_RENDER).bind_partial(*args, **kwargs)
+        title_image = bound.arguments.get("title_image")
+    except Exception:
+        title_image = kwargs.get("title_image")
+    return os.path.basename(str(title_image or "")).lower() == "title-fixtures.png"
+
+
+def _render(*args, **kwargs):
+    if not _is_fixtures(args, kwargs):
+        return _ORIGINAL_RENDER(*args, **kwargs)
+    with _LOCK:
+        old_logo = poster._paste_brand_logo
+        old_title = poster._paste_title_image
+        poster._paste_brand_logo = _fixtures_logo
+        poster._paste_title_image = _fixtures_title
+        try:
+            return _ORIGINAL_RENDER(*args, **kwargs)
+        finally:
+            poster._paste_brand_logo = old_logo
+            poster._paste_title_image = old_title
+
+
+poster.render_poster = _render
