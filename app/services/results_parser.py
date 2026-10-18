@@ -37,7 +37,7 @@ _ALIASES = {
     "ESZ": ["ESZARZIS"],
     "ESM": ["ESMETLAOUI"],
     "ASA": ["ASAG"],
-    "UST": ["USTAT"],
+    "UST": ["USTAT", "USTA"],
     "BSBH": ["BSB"],
     "CSC": ["CSCH"],
     "CSM": ["CSMS"],
