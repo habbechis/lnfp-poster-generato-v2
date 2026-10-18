@@ -1106,6 +1106,11 @@
   }
 
   async function seed() {
+    // Default the poster date to the user's local current date, not a stale hard-coded date.
+    // Keep the date editable; fixture parsing and saved posters may still set a specific date.
+    const now = new Date();
+    const pad2 = (n) => String(n).padStart(2, "0");
+    el.date.value = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
     matches = seedPairs().map(([h, a]) => {
       const m = newMatch(h, a);
       m.stadium = (TEAM_BY_CODE[h] || {}).stadium_ar || "";
