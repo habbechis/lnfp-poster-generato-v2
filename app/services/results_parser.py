@@ -29,6 +29,7 @@ from .teams import SQUADS, teams_for
 # Acronyms that appear in bulletins but differ from our ``short`` field.
 _ALIASES = {
     "ESHS": ["HS", "ESHSOUSSE"],
+    "ESB": ["ESBOU"],
     "CSHL": ["HL", "CSHLIF"],
     "JSO": ["JSOM", "JSEO"],
     "PSS": ["PSSAKIET", "SAKIET"],
