@@ -508,6 +508,7 @@
       date_iso: el.date.value,
       date_label: arabicDate(el.date.value),
       competition: el.competition.value,
+      squad: CTX.squad || "ligue1",
       brand_logo: brandLogo,
       background: CTX.background || "",
       title_size: parseFloat(el.titleSize.value) || 1,
@@ -563,6 +564,8 @@
       el.previewImg.hidden = false;
       el.previewEmpty.hidden = true;
       setBadge("جاهز", "ok");
+      if (payload.squad === "l2-all" && payload.matches.length > 7)
+        hint("المعاينة تعرض أول 4 مباريات؛ التحميل يجمع الصفحات في ملف ZIP.", "ok");
     } catch (err) {
       if (err.name === "AbortError") return;   // superseded; keep the spinner
       setBadge("خطأ", "err");
@@ -685,7 +688,9 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `lnfp-${payload.date_iso || "affiche"}.png`;
+      a.download = payload.squad === "l2-all" && payload.matches.length > 7
+        ? `lnfp-${payload.date_iso || "affiche"}-pages.zip`
+        : `lnfp-${payload.date_iso || "affiche"}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       hint("تم تحميل الأفيش بنجاح.", "ok");
