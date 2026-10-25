@@ -244,7 +244,10 @@ def _matchday(round_no, leg, squad) -> int | None:
     if leg != "retour":
         return round_no
     try:
-        per_leg = len(teams_for(squad if squad in SQUADS else "ligue1")) - 1
+        if squad == "l2-all":
+            per_leg = len(teams_for("l2-pool1")) - 1
+        else:
+            per_leg = len(teams_for(squad if squad in SQUADS else "ligue1")) - 1
     except Exception:
         return round_no
     return per_leg + round_no

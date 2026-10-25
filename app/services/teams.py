@@ -18,6 +18,9 @@ SQUADS = {
                  "background": "bg-ligue2.png", "brand": "logo-ligue2.png"},
     "l2-pool2": {"file": "teams-l2-pool2.json",  "logos": "logos-l2",
                  "background": "bg-ligue2.png", "brand": "logo-ligue2.png"},
+    # Combined editor roster: both pools, with the same Ligue 2 branding.
+    "l2-all":   {"file": "",                    "logos": "logos-l2",
+                 "background": "bg-ligue2.png", "brand": "logo-ligue2.png"},
 }
 DEFAULT_SQUAD = "ligue1"
 
@@ -31,6 +34,8 @@ _CHANNELS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 @lru_cache(maxsize=8)
 def teams_for(squad: str) -> list[dict]:
     """The roster for one squad, each team tagged with its logo directory."""
+    if squad == "l2-all":
+        return teams_for("l2-pool1") + teams_for("l2-pool2")
     spec = SQUADS.get(squad) or SQUADS[DEFAULT_SQUAD]
     with open(os.path.join(_DATADIR, spec["file"]), encoding="utf-8") as fh:
         teams = json.load(fh)["teams"]

@@ -11,6 +11,7 @@ bp = Blueprint("views", __name__)
 POOLS = {
     "pool1": {"squad": "l2-pool1", "label": "المجموعة الأولى"},
     "pool2": {"squad": "l2-pool2", "label": "المجموعة الثانية"},
+    "both":  {"squad": "l2-all",    "label": "المجموعتان معًا"},
 }
 
 # The three standings tables the studio can build, each tied to a squad.
