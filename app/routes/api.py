@@ -418,7 +418,6 @@ def generate():
 
         png = poster.render_png_bytes(
             model["title"], model["date_label"], output_matches,
-            model["title"], model["date_label"], model["matches"],
             brand_logo=model["brand_logo"], background=model["background"],
             title_size=model["title_size"], title_font=model["title_font"],
             title_image=model["title_image"], mode=model["mode"], scale=1.0)
