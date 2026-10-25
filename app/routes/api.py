@@ -360,26 +360,14 @@ def preview():
     combined_pages = payload.get("squad") == "l2-all" and len(model["matches"]) > 7
     try:
         if combined_pages:
-            page_images = []
-            for start in range(0, len(model["matches"]), 4):
-                page_png = poster.render_png_bytes(
-                    model["title"], model["date_label"], model["matches"][start:start + 4],
-                    brand_logo=model["brand_logo"], background=model["background"],
-                    title_size=model["title_size"], title_font=model["title_font"],
-                    title_image=model["title_image"], mode=model["mode"], scale=0.35)
-                page_images.append(Image.open(io.BytesIO(page_png)).convert("RGB"))
-            gap = 24
-            width = max(page.width for page in page_images)
-            height = sum(page.height for page in page_images) + gap * (len(page_images) - 1)
-            preview = Image.new("RGB", (width, height), (35, 18, 22))
-            y = 0
-            for page in page_images:
-                x = (width - page.width) // 2
-                preview.paste(page, (x, y))
-                y += page.height + gap
-            output = io.BytesIO()
-            preview.save(output, format="PNG", optimize=True)
-            png = output.getvalue()
+            page_no = 2 if int(payload.get("preview_page", 1) or 1) == 2 else 1
+            start = (page_no - 1) * 4
+            page_matches = model["matches"][start:start + 4]
+            png = poster.render_png_bytes(
+                model["title"], model["date_label"], page_matches,
+                brand_logo=model["brand_logo"], background=model["background"],
+                title_size=model["title_size"], title_font=model["title_font"],
+                title_image=model["title_image"], mode=model["mode"], scale=0.55)
         else:
             png = poster.render_png_bytes(
                 model["title"], model["date_label"], model["matches"],
@@ -403,7 +391,7 @@ def generate():
 
     combined_pages = payload.get("squad") == "l2-all" and len(model["matches"]) > 7
     try:
-        if combined_pages:
+        if combined_pages and payload.get("download_mode") == "zip":
             buf = io.BytesIO()
             with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
                 for page_no, start in enumerate(range(0, len(model["matches"]), 4), 1):
@@ -421,14 +409,23 @@ def generate():
                 "Cache-Control": "no-store",
             })
 
+        if combined_pages:
+            page_no = 2 if int(payload.get("preview_page", 1) or 1) == 2 else 1
+            start = (page_no - 1) * 4
+            output_matches = model["matches"][start:start + 4]
+        else:
+            output_matches = model["matches"]
+
         png = poster.render_png_bytes(
+            model["title"], model["date_label"], output_matches,
             model["title"], model["date_label"], model["matches"],
             brand_logo=model["brand_logo"], background=model["background"],
             title_size=model["title_size"], title_font=model["title_font"],
             title_image=model["title_image"], mode=model["mode"], scale=1.0)
     except Exception as exc:
         return _render_error(exc)
-    fname = f"lnfp-{_slug(payload.get('date_iso') or 'affiche')}.png"
+    page_suffix = f"-page-{2 if int(payload.get('preview_page', 1) or 1) == 2 else 1}" if combined_pages else ""
+    fname = f"lnfp-{_slug(payload.get('date_iso') or 'affiche')}{page_suffix}.png"
     return Response(png, mimetype="image/png", headers={
         "Content-Disposition": f'attachment; filename="{fname}"',
         "Cache-Control": "no-store",
