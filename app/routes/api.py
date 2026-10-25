@@ -355,9 +355,12 @@ def preview():
     model = _build_render_model(request.get_json(force=True, silent=True) or {})
     if not model["matches"]:
         return jsonify({"error": "add at least one match"}), 400
+    preview_matches = (model["matches"][:4]
+                       if payload.get("squad") == "l2-all"
+                       and len(model["matches"]) > 7 else model["matches"])
     try:
         png = poster.render_png_bytes(
-            model["title"], model["date_label"], model["matches"],
+            model["title"], model["date_label"], preview_matches,
             brand_logo=model["brand_logo"], background=model["background"],
             title_size=model["title_size"], title_font=model["title_font"],
             title_image=model["title_image"], mode=model["mode"],
@@ -371,18 +374,37 @@ def preview():
 @bp.post("/generate")
 @require_auth
 def generate():
-    """Render the full-resolution PNG and offer it as a download."""
+    """Render a poster, or ZIP paginated posters for the combined Ligue 2 pool."""
     payload = request.get_json(force=True, silent=True) or {}
     model = _build_render_model(payload)
     if not model["matches"]:
         return jsonify({"error": "add at least one match"}), 400
+
+    combined_pages = payload.get("squad") == "l2-all" and len(model["matches"]) > 7
     try:
+        if combined_pages:
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                for page_no, start in enumerate(range(0, len(model["matches"]), 4), 1):
+                    page_matches = model["matches"][start:start + 4]
+                    png = poster.render_png_bytes(
+                        model["title"], model["date_label"], page_matches,
+                        brand_logo=model["brand_logo"], background=model["background"],
+                        title_size=model["title_size"], title_font=model["title_font"],
+                        title_image=model["title_image"], mode=model["mode"], scale=1.0)
+                    fname = f"lnfp-{_slug(payload.get('date_iso') or 'affiche')}-page-{page_no}.png"
+                    zf.writestr(fname, png)
+            zip_name = f"lnfp-{_slug(payload.get('date_iso') or 'affiche')}-pages.zip"
+            return Response(buf.getvalue(), mimetype="application/zip", headers={
+                "Content-Disposition": f'attachment; filename="{zip_name}"',
+                "Cache-Control": "no-store",
+            })
+
         png = poster.render_png_bytes(
             model["title"], model["date_label"], model["matches"],
             brand_logo=model["brand_logo"], background=model["background"],
             title_size=model["title_size"], title_font=model["title_font"],
-            title_image=model["title_image"], mode=model["mode"],
-            scale=1.0)
+            title_image=model["title_image"], mode=model["mode"], scale=1.0)
     except Exception as exc:
         return _render_error(exc)
     fname = f"lnfp-{_slug(payload.get('date_iso') or 'affiche')}.png"
