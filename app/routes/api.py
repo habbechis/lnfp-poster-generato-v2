@@ -8,6 +8,7 @@ import traceback
 import zipfile
 
 from flask import Blueprint, Response, current_app, jsonify, request
+from PIL import Image
 
 from ..auth import require_auth
 from ..services import fixtures_parser, livescore, poster, results_parser
@@ -351,21 +352,40 @@ def _render_error(exc):
 @bp.post("/preview")
 @require_auth
 def preview():
-    """Render a downscaled PNG for the live on-screen preview."""
+    """Render a downscaled PNG; combined Ligue 2 previews show every page stacked."""
     payload = request.get_json(force=True, silent=True) or {}
     model = _build_render_model(payload)
     if not model["matches"]:
         return jsonify({"error": "add at least one match"}), 400
-    preview_matches = (model["matches"][:4]
-                       if payload.get("squad") == "l2-all"
-                       and len(model["matches"]) > 7 else model["matches"])
+    combined_pages = payload.get("squad") == "l2-all" and len(model["matches"]) > 7
     try:
-        png = poster.render_png_bytes(
-            model["title"], model["date_label"], preview_matches,
-            brand_logo=model["brand_logo"], background=model["background"],
-            title_size=model["title_size"], title_font=model["title_font"],
-            title_image=model["title_image"], mode=model["mode"],
-            scale=0.55)
+        if combined_pages:
+            page_images = []
+            for start in range(0, len(model["matches"]), 4):
+                page_png = poster.render_png_bytes(
+                    model["title"], model["date_label"], model["matches"][start:start + 4],
+                    brand_logo=model["brand_logo"], background=model["background"],
+                    title_size=model["title_size"], title_font=model["title_font"],
+                    title_image=model["title_image"], mode=model["mode"], scale=0.35)
+                page_images.append(Image.open(io.BytesIO(page_png)).convert("RGB"))
+            gap = 24
+            width = max(page.width for page in page_images)
+            height = sum(page.height for page in page_images) + gap * (len(page_images) - 1)
+            preview = Image.new("RGB", (width, height), (35, 18, 22))
+            y = 0
+            for page in page_images:
+                x = (width - page.width) // 2
+                preview.paste(page, (x, y))
+                y += page.height + gap
+            output = io.BytesIO()
+            preview.save(output, format="PNG", optimize=True)
+            png = output.getvalue()
+        else:
+            png = poster.render_png_bytes(
+                model["title"], model["date_label"], model["matches"],
+                brand_logo=model["brand_logo"], background=model["background"],
+                title_size=model["title_size"], title_font=model["title_font"],
+                title_image=model["title_image"], mode=model["mode"], scale=0.55)
     except Exception as exc:
         return _render_error(exc)
     return Response(png, mimetype="image/png",
