@@ -45,6 +45,11 @@
     previewEmpty: $("#previewEmpty"),
     previewBadge: $("#previewBadge"),
     previewSpinner: $("#previewSpinner"),
+    combinedPages: $("#combinedPages"),
+    previewPage1: $("#previewPage1"),
+    previewPage2: $("#previewPage2"),
+    downloadCurrentPage: $("#downloadCurrentPage"),
+    downloadBothPages: $("#downloadBothPages"),
     rowTpl: $("#matchRowTpl"),
     teamMenu: $("#teamMenu"),
     teamSearch: $("#teamSearch"),
@@ -73,6 +78,7 @@
   let brandLogo = CTX.brand || "logo-ligue1.png";
   let previewAbort = null;           // cancels the in-flight preview request
   let previewSeq = 0;                // only the newest response may paint
+  let combinedPreviewPage = 1;       // selected page for combined Ligue 2
 
   // Each team carries its logo file and the static folder it lives in
   // (Ligue 1 in "logos", Ligue 2 pools in "logos-l2").
@@ -513,6 +519,7 @@
       background: CTX.background || "",
       title_size: parseFloat(el.titleSize.value) || 1,
       title_font: el.titleFont.value || "",
+      preview_page: combinedPreviewPage,
       matches: matches
         .filter((m) => m.home && m.away)
         .map((m) => ({ home: m.home, away: m.away, time: m.time,
@@ -530,6 +537,16 @@
   async function updatePreview() {
     if (isKickoff()) return updateKickoffPreview();
     const payload = buildPayload();
+    const combinedPaginated = payload.squad === "l2-all" && payload.matches.length > 7;
+    if (el.combinedPages) el.combinedPages.hidden = !combinedPaginated;
+    if (el.previewPage1) {
+      el.previewPage1.classList.toggle("is-active", combinedPreviewPage === 1);
+      el.previewPage1.setAttribute("aria-pressed", String(combinedPreviewPage === 1));
+    }
+    if (el.previewPage2) {
+      el.previewPage2.classList.toggle("is-active", combinedPreviewPage === 2);
+      el.previewPage2.setAttribute("aria-pressed", String(combinedPreviewPage === 2));
+    }
     if (payload.matches.length === 0) {
       setBadge("أضف مباراة", "loading");
       showEmpty("اختر الفرق لعرض المعاينة…");
@@ -564,8 +581,8 @@
       el.previewImg.hidden = false;
       el.previewEmpty.hidden = true;
       setBadge("جاهز", "ok");
-      if (payload.squad === "l2-all" && payload.matches.length > 7)
-        hint("المعاينة تعرض أول 4 مباريات؛ التحميل يجمع الصفحات في ملف ZIP.", "ok");
+      if (combinedPaginated)
+        hint(`معاينة الصفحة ${combinedPreviewPage} من ${Math.ceil(payload.matches.length / 4)}. يمكنك تحميل الصفحة الحالية أو الصفحتين معًا.`, "ok");
     } catch (err) {
       if (err.name === "AbortError") return;   // superseded; keep the spinner
       setBadge("خطأ", "err");
@@ -672,9 +689,12 @@
     }
   }
 
-  async function download() {
+  async function download(downloadMode = "selected") {
     if (isKickoff()) return downloadKickoff();
     const payload = buildPayload();
+    const combinedPaginated = payload.squad === "l2-all" && payload.matches.length > 7;
+    payload.download_mode = combinedPaginated ? downloadMode : "selected";
+    payload.preview_page = combinedPreviewPage;
     if (payload.matches.length === 0) return hint("أضف مباراة واحدة على الأقل.", "err");
     hint("جارٍ تجهيز الملف بدقة كاملة…");
     try {
@@ -688,9 +708,9 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = payload.squad === "l2-all" && payload.matches.length > 7
+      a.download = combinedPaginated && downloadMode === "zip"
         ? `lnfp-${payload.date_iso || "affiche"}-pages.zip`
-        : `lnfp-${payload.date_iso || "affiche"}.png`;
+        : `lnfp-${payload.date_iso || "affiche"}-page-${combinedPaginated ? combinedPreviewPage : ""}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       hint("تم تحميل الأفيش بنجاح.", "ok");
@@ -1042,6 +1062,15 @@
   /* ------------------------------------------------------------------ */
   /* Wiring                                                              */
   /* ------------------------------------------------------------------ */
+  if (el.previewPage1) el.previewPage1.addEventListener("click", () => {
+    if (combinedPreviewPage !== 1) { combinedPreviewPage = 1; schedulePreview(); }
+  });
+  if (el.previewPage2) el.previewPage2.addEventListener("click", () => {
+    if (combinedPreviewPage !== 2) { combinedPreviewPage = 2; schedulePreview(); }
+  });
+  if (el.downloadCurrentPage) el.downloadCurrentPage.addEventListener("click", () => download("selected"));
+  if (el.downloadBothPages) el.downloadBothPages.addEventListener("click", () => download("zip"));
+
   el.addMatch.addEventListener("click", () => {
     matches.push(newMatch());
     renderMatches();
