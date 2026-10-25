@@ -238,6 +238,16 @@
           <p class="preview__empty" id="previewEmpty">اختر الفرق لعرض المعاينة…</p>
           <div class="preview__spinner" id="previewSpinner" hidden><span></span></div>
         </div>
+        <div class="combined-pages" id="combinedPages" hidden>
+          <div class="combined-pages__tabs" role="group" aria-label="اختيار صفحة المعاينة">
+            <button type="button" class="btn btn--secondary is-active" id="previewPage1" aria-pressed="true">صفحة 1</button>
+            <button type="button" class="btn btn--secondary" id="previewPage2" aria-pressed="false">صفحة 2</button>
+          </div>
+          <div class="combined-pages__downloads">
+            <button type="button" class="btn btn--secondary" id="downloadCurrentPage">تحميل الصفحة المعروضة PNG</button>
+            <button type="button" class="btn btn--primary" id="downloadBothPages">تحميل الصفحتين ZIP</button>
+          </div>
+        </div>
       </aside>
     </section>
   </main>
