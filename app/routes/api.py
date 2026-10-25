@@ -352,7 +352,8 @@ def _render_error(exc):
 @require_auth
 def preview():
     """Render a downscaled PNG for the live on-screen preview."""
-    model = _build_render_model(request.get_json(force=True, silent=True) or {})
+    payload = request.get_json(force=True, silent=True) or {}
+    model = _build_render_model(payload)
     if not model["matches"]:
         return jsonify({"error": "add at least one match"}), 400
     preview_matches = (model["matches"][:4]
