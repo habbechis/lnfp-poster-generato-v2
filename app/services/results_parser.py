@@ -108,7 +108,12 @@ def _lookup(squad: str) -> tuple[dict, dict]:
         for t in teams_for(name):
             code = t["code"]
             keys = [t.get("short", ""), code]
-            keys += _ALIASES.get(_key(t.get("short", "")), [])
+            aliases = _ALIASES.get(_key(t.get("short", "")), [])
+            # In the combined Ligue 2 roster, both pools have an "ASA" code.
+            # Reserve ASAG for Agareb; plain ASA must resolve to Ariana.
+            if name == "l2-all" and code == "l2p2_asar":
+                aliases = [alias for alias in aliases if _key(alias) != "ASAG"]
+            keys += aliases
             for k in keys:
                 k = _key(k)
                 if k:
